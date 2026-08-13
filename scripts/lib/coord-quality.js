@@ -123,7 +123,7 @@ export function findFallbackCoords(facilities, { minCount = 50, minTowns = 5 } =
  */
 export function applyCoordQuality(
   facilities,
-  { isPlaceholderAddress, minCount = 50, minTowns = 3, log = console.log } = {},
+  { isPlaceholderAddress, minCount = 50, minTowns = 5, log = console.log } = {},
 ) {
   let placeholder = 0;
   let representative = 0;

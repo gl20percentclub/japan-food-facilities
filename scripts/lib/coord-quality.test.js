@@ -148,6 +148,19 @@ assert(
   'プレースホルダを先に落とすため、同じ行がフォールバックとして二重に数えられない',
 );
 
+// --- 既定の閾値: findFallbackCoords と applyCoordQuality でずれていないこと ---
+// 実データで検証した採用値は minCount=50 / minTowns=5。片方だけ直すと
+// 「検証した閾値と実際に適用される閾値が違う」状態になるため固定する。
+const defaultsProbe = Array.from({ length: 60 }, (_, i) => ({
+  name: `店${i}`, address: `長野県長野市${TOWNS[i % 4]}${i}-1`, pref: '長野県', city: '長野市',
+  lat: 36.5, lng: 138.1, geocoding_level: 3,
+}));
+const defaultsStats = applyCoordQuality(defaultsProbe, { isPlaceholderAddress, log: () => {} });
+assert(
+  defaultsStats.fallback === 0,
+  '既定の閾値では町名4種の山を落とさない（minTowns の既定が5であること）',
+);
+
 // --- dropCoord 単体 ---
 const one = { lat: 1, lng: 2, geocoding_level: 8 };
 dropCoord(one);
