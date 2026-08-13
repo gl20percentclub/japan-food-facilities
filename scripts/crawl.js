@@ -8,6 +8,7 @@
 //   lib/normalize.js     正規化（別名→内部キー、住所結合、日付、座標補正、都道府県/市区町村解決）
 //   lib/geocode.js       ジオコーディング（住所→座標の補完）
 //   lib/city-normmap.js  市区町村名の名寄せ（表記ゆれ→公式名）
+//   lib/coord-quality.js 座標の品質フィルタ（信用できない座標を落とす）
 //
 // 配信物は3種類だけ（用途が無い階層JSONは配信しない）:
 //   api/facilities-all.csv[.gz]   全件の結合CSV（build/merged-csv.js）
@@ -19,6 +20,7 @@
 //   node scripts/crawl.js --dry-run    ダウンロードをスキップしキャッシュを使う
 //   node scripts/crawl.js --no-geocode ジオコーディングをスキップ
 //   node scripts/crawl.js --no-normmap 市区町村名の名寄せをスキップ（高速化・生表記のまま）
+//   node scripts/crawl.js --no-coord-quality 座標の品質フィルタをスキップ（生の座標のまま）
 //   node scripts/crawl.js --only=osaka-city,minato   指定キーのソースだけ処理
 
 import fs from 'node:fs';
@@ -32,9 +34,11 @@ import {
   toFacility,
   resolvePrefecture,
   resolveCity,
+  isPlaceholderAddress,
 } from './lib/normalize.js';
 import { enrichWithGeocoding } from './lib/geocode.js';
 import { buildCityNormMap, applyPrefCity } from './lib/city-normmap.js';
+import { applyCoordQuality } from './lib/coord-quality.js';
 import { buildMergedCsv } from './build/merged-csv.js';
 import { buildPrefectureCsvs } from './build/prefecture-csv.js';
 import { generateTiles } from './build/tiles.js';
@@ -49,6 +53,7 @@ const PREF_CSV_DIR = path.join(API_DIR, 'prefectures');
 const DRY_RUN = process.argv.includes('--dry-run');
 const NO_GEOCODE = process.argv.includes('--no-geocode');
 const NO_NORMMAP = process.argv.includes('--no-normmap');
+const NO_COORD_QUALITY = process.argv.includes('--no-coord-quality');
 // 施設0件のソースがあっても失敗させない（部分実行や意図的な空ソースの動作確認用）。
 const ALLOW_EMPTY_SOURCES = process.argv.includes('--allow-empty-sources');
 
@@ -206,6 +211,16 @@ async function main() {
   if (NO_NORMMAP) console.log('  スキップ (--no-normmap)');
   const { colFixedCount, mergedCount } = applyPrefCity(facilities, normMap);
   console.log(`  列ズレ補正: ${colFixedCount}件 / 市区町村名の名寄せ: ${mergedCount}件`);
+
+  // 施設の位置として信用できない座標を落とす（レコードは残し、座標だけ null にする）。
+  // 市区町村名の名寄せの後に実行する: 代表点フォールバックの判定で使う町名の
+  // 異なり数は、確定した pref / city を住所から剥がして数えるため。
+  if (NO_COORD_QUALITY) {
+    console.log('\n▼ 座標の品質フィルタ: スキップ (--no-coord-quality)');
+  } else {
+    console.log('\n▼ 座標の品質フィルタ');
+    applyCoordQuality(facilities, { isPlaceholderAddress });
+  }
 
   // 配信物を作り直す。api/ ごと消してから書くことで、過去の生成物（旧形式の
   // 階層JSON 等）が gh-pages に残り続けるのを防ぐ。
