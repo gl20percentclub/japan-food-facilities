@@ -9,6 +9,7 @@
 //   lib/geocode.js       ジオコーディング（住所→座標の補完）
 //   lib/city-normmap.js  市区町村名の名寄せ（表記ゆれ→公式名）
 //   lib/coord-quality.js 座標の品質フィルタ（信用できない座標を落とす）
+//   lib/pref-boundary.js 行政界との突き合わせ（県外に落ちた座標を落とす）
 //
 // 配信物は3種類だけ（用途が無い階層JSONは配信しない）:
 //   api/facilities-all.csv[.gz]   全件の結合CSV（build/merged-csv.js）
@@ -38,7 +39,8 @@ import {
 } from './lib/normalize.js';
 import { enrichWithGeocoding } from './lib/geocode.js';
 import { buildCityNormMap, applyPrefCity } from './lib/city-normmap.js';
-import { applyCoordQuality } from './lib/coord-quality.js';
+import { applyCoordQuality, dropCoord } from './lib/coord-quality.js';
+import { applyPrefBoundary } from './lib/pref-boundary.js';
 import { buildMergedCsv } from './build/merged-csv.js';
 import { buildPrefectureCsvs } from './build/prefecture-csv.js';
 import { generateTiles } from './build/tiles.js';
@@ -220,6 +222,9 @@ async function main() {
   } else {
     console.log('\n▼ 座標の品質フィルタ');
     applyCoordQuality(facilities, { isPlaceholderAddress });
+    // 行政界との突き合わせは、上の3ルールで明らかに無効な座標を落としてから行う
+    // （判定対象が減るぶん速く、代表点フォールバックを県外として二重に数えない）。
+    await applyPrefBoundary(facilities, { dropCoord });
   }
 
   // 配信物を作り直す。api/ ごと消してから書くことで、過去の生成物（旧形式の
