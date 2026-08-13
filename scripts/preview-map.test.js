@@ -148,4 +148,25 @@ await test('廃止した配信形式を参照していない', async () => {
   }
 });
 
+await test('代表点の表示が「1施設」と誤解されない文言になっている', async () => {
+  // 最大ズーム未満のタイルは代表点（name を持たず count に件数が入る）。
+  // 「各点＝1施設」「（名称なし）」のままだと、点の数を施設数と読まれたり、
+  // 元データに名前が無い施設と区別がつかなくなる。
+  const fc = buildFeatureCollection(FACILITIES);
+  const thinned = thinFeatures(fc.features, 6);
+  assert.ok(thinned.length >= 1, '間引き後も点が残る');
+  for (const f of thinned) {
+    assert.ok(!('name' in f.properties), '代表点に name は載らない');
+    assert.ok(Number.isInteger(f.properties.count), 'count に件数が入る');
+  }
+
+  // 凡例をズームで出し分ける（要素と、間引き中の文言の両方を固定する）
+  assert.ok(/id="legend-text"/.test(HTML), '凡例を差し替える要素がある');
+  assert.ok(HTML.includes('各点＝付近の施設をまとめた代表'), '間引き中の凡例文言がある');
+
+  // ポップアップは count の有無で代表点を判定し、件数を見出しに出す
+  assert.ok(/props\.count !== undefined/.test(HTML), '代表点かどうかを count の有無で判定する');
+  assert.ok(HTML.includes('この付近に '), '代表点のポップアップは件数を見出しに出す');
+});
+
 console.log(`\n✅ preview-map 整合性テスト: ${passed}件すべて合格`);
