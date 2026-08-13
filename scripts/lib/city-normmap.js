@@ -65,10 +65,19 @@ export function isResolvablePair(pref, city) {
   return isMeaningfulCity(city);
 }
 
-/** 市区町村名として意味のある値か（'不明'・空文字は自治体を特定しない）。 */
+/**
+ * 市区町村名として意味のある値か（純粋関数）。
+ *
+ * '不明'・空文字はもちろん、都道府県名も自治体を特定しない。pref 列に郵便番号が
+ * 入り city 列に都道府県名が入る列ズレのソース（富山県の数件）では city が
+ * 「富山県」になるが、これは県全域を指すので代表住所1件の結果を全レコードへ
+ * 広げてよい値ではないし、市区町村の異なり数に数えてよい値でもない。
+ * 実在する自治体名（富山市 等）と衝突しないのは、PREFS が「富山県」のように
+ * 接尾辞まで含む正式名だけを持つため。
+ */
 export function isMeaningfulCity(city) {
   const c = String(city || '').trim();
-  return c !== '' && c !== '不明';
+  return c !== '' && c !== '不明' && !PREFS.has(c);
 }
 
 /**
@@ -176,7 +185,13 @@ export function resolvePrefCity(facility, normMap = {}) {
   // 自治体名だった。公式の1,741自治体と突き合わせる仕組みを入れるまでは '不明' のままにする。
 
   // 名寄せできなかった分も同じ整形を通す。表記ゆれは残るが粒度だけは揃う。
-  return { pref, city: toMunicipality(cityRaw), cityRaw, colFixed };
+  // 列ズレ補正で住所から市区町村を復元できなかった場合、cityRaw には都道府県名が
+  // 残ったままになる（住所が県名で始まらないと splitPrefCity が [null, null] を返すため）。
+  // 都道府県名をそのまま city に出すと、build/merged-csv.js の countableArea が
+  // 実在する自治体として異なり数に数え、CSV・タイルにも存在しない市区町村が載る。
+  // 特定できていないので '不明' に倒す。
+  const city = isMeaningfulCity(cityRaw) ? toMunicipality(cityRaw) : '不明';
+  return { pref, city, cityRaw, colFixed };
 }
 
 /**

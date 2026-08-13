@@ -348,6 +348,45 @@ await test('isResolvablePair: 自治体を特定しないペアは名寄せ対�
   assert.equal(isResolvablePair('三重県', ''), false);
   assert.equal(isResolvablePair('不明', '不明'), false);
   assert.equal(isResolvablePair('9300000', '四日市市'), false, '都道府県が不正なら信用しない');
+  assert.equal(
+    isResolvablePair('富山県', '富山県'),
+    false,
+    '都道府県名は県全域を指すので代表住所1件で代表させない',
+  );
+});
+
+await test('applyPrefCity: city 列に都道府県名が入るバケツで代表住所が焼き付かない', () => {
+  // 列ズレのソース（city 列に県名）は県全域が1バケツになる。名寄せ対象にすると
+  // 代表住所1件の自治体名が県内の全レコードへ焼き付き、列ズレ補正が
+  // レコードごとに正しく求めた自治体名を上書きしてしまう。
+  const facilities = [
+    { _pref: '富山県', _city: '富山県', address: '富山県高岡市広小路7-50' },
+    { _pref: '富山県', _city: '富山県', address: '富山県魚津市釈迦堂1-10-1' },
+  ];
+  applyPrefCity(facilities, { '富山県\t富山県': { pref: '富山県', city: '高岡市' } });
+  assert.equal(facilities[0].city, '高岡市');
+  assert.equal(facilities[1].city, '魚津市', '自分の住所から復元した自治体を保つ');
+});
+
+await test('collectCityPairs: city 列の都道府県名は名寄せ対象にしない', () => {
+  const pairs = collectCityPairs([
+    { _pref: '富山県', _city: '富山県', address: '富山県高岡市広小路7-50' },
+    { _pref: '東京都', _city: '港区', address: '東京都港区赤坂1-1' },
+  ]);
+  assert.deepEqual(
+    pairs.map((p) => p.city),
+    ['港区'],
+  );
+});
+
+await test('resolvePrefCity: 列ズレを復元できなければ都道府県名でなく「不明」を出す', () => {
+  // 住所が県名で始まらないと splitPrefCity が [null, null] を返し、city 列の
+  // 都道府県名がそのまま残る。これを city に出すと build/merged-csv.js の
+  // countableArea が実在する自治体として異なり数に数えてしまう。
+  const r = resolvePrefCity({ _pref: '9300000', _city: '富山県', address: '高岡市広小路7-50' }, {});
+  assert.equal(r.pref, '富山県', '都道府県は city 列から復元できている');
+  assert.equal(r.city, '不明', '都道府県名を市区町村として出さない');
+  assert.equal(r.colFixed, true);
 });
 
 await test('resolvePrefCity: 「不明」ペアには名寄せ表を適用しない', () => {
