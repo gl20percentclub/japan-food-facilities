@@ -67,14 +67,19 @@ await test('TILE_MIN_ZOOM / TILE_MAX_ZOOM が タイル生成の既定ズーム�
 });
 
 await test('初期ズームがタイルの最小ズーム以上で、開いた直後から点が出る', async () => {
-  // fitBounds で全国を収めると z5 以下になり、タイルが無くて点が1つも出ない。
-  // 初期ズームはタイルの最小ズームに合わせる（定数を直接使っていることも確認する）。
-  assert.ok(/zoom: TILE_MIN_ZOOM/.test(HTML), '初期ズームに TILE_MIN_ZOOM を使う');
+  // タイルが無いズームで開くと点が1つも出ない。初期ズームは必ずタイルの
+  // 最小ズーム以上にする（定数を直接使っていることも確認する）。
+  assert.ok(/zoom: INITIAL_ZOOM/.test(HTML), '初期ズームに INITIAL_ZOOM を使う');
   assert.ok(!/fitBoundsOptions/.test(HTML), '全国 fitBounds で初期表示していない');
   await withTiles({}, (meta) => {
-    const minZoom = Number(htmlValue(/TILE_MIN_ZOOM\s*=\s*(\d+)/, 'TILE_MIN_ZOOM'));
-    assert.ok(minZoom >= meta.minzoom, `初期ズーム(${minZoom}) がタイルの最小ズーム(${meta.minzoom})以上`);
+    const initialZoom = Number(htmlValue(/INITIAL_ZOOM\s*=\s*(\d+)/, 'INITIAL_ZOOM'));
+    assert.ok(
+      initialZoom >= meta.minzoom,
+      `初期ズーム(${initialZoom}) がタイルの最小ズーム(${meta.minzoom})以上`,
+    );
   });
+  // 地図の下限がタイルの最小ズームより下だと、引いたときに点が消えるズームに到達できる。
+  assert.ok(/minZoom: TILE_MIN_ZOOM/.test(HTML), '地図の下限をタイルの最小ズームに揃える');
   // 初期中心が日本の範囲（タイルの bounds）に収まっていること。
   const center = htmlValue(/INITIAL_CENTER = \[([^\]]+)\]/, 'INITIAL_CENTER')
     .split(',').map((v) => Number(v.trim()));

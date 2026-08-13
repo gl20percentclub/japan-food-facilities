@@ -57,8 +57,8 @@ https://food.japan-facilities.com/api/facilities-all.csv
 | ------------- | ------------------------------------------------------------- |
 | タイルURL        | `https://food.japan-facilities.com/api/tiles/{z}/{x}/{y}.pbf` |
 | Source layer名 | `facilities`                                                  |
-| 対応ズーム         | `6`〜`12`                                                      |
-| 属性          | `name`（施設名） / `business_type`（営業許可・届出の業種） / `pref`（都道府県名） / `city`（市区町村名） / `count`（代表点がまとめた件数。z6〜z11 のみ）                    |
+| 対応ズーム         | `3`〜`12`                                                      |
+| 属性          | `name`（施設名） / `business_type`（営業許可・届出の業種） / `pref`（都道府県名） / `city`（市区町村名） / `count`（代表点がまとめた件数。z3〜z11 のみ）                    |
 
 ※ ベクトルタイルは軽量化のため上記の属性に絞って配信しています
 
@@ -68,7 +68,7 @@ map.addSource("facilities", {
   tiles: [
     "https://food.japan-facilities.com/api/tiles/{z}/{x}/{y}.pbf",
   ],
-  minzoom: 6,
+  minzoom: 3,
   maxzoom: 12,
   attribution:
     '出典：<a href="https://gl20percentclub.github.io/japan-food-facilities/">Japan Food Facilities</a>（<a href="https://gl20percentclub.github.io/japan-food-facilities/attribution.html" target=">自治体・厚生労働省が公開する食品営業許可オープンデータを加工して作成</a>）',
@@ -86,7 +86,7 @@ map.addLayer({
 });
 ```
 
-**全施設の点が入るのは z12（最大ズーム）だけです。** z6〜z11 では、同じ場所に重なって
+**全施設の点が入るのは z12（最大ズーム）だけです。** z3〜z11 では、同じ場所に重なって
 区別できない同一業種の施設を1点にまとめています（代表点）。代表点は `name` を持たず、
 まとめた件数が `count` に入ります。業種は残しているので、業種での絞り込みはどのズームでも
 正しく効きます。施設名や1件ごとの点が必要な場合は z12 を使ってください。
