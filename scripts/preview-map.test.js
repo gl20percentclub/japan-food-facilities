@@ -12,7 +12,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildFeatureCollection, generateTiles } from './build/tiles.js';
+import { buildFeatureCollection, generateTiles, thinFeatures } from './build/tiles.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -104,7 +104,14 @@ await test('タイルURLテンプレートが「api/tiles/ + metadata.tiles[0]�
 await test('ポップアップのラベル定義が生成featureの属性と過不足なく一致する', async () => {
   // ポップアップは feature が実際に持つ属性を出すため、ラベル定義(TILE_PROP_LABELS)が
   // 生成物とズレるとキー名がそのまま画面に出る／表示されない属性が生まれる。
-  const props = Object.keys(buildFeatureCollection(FACILITIES).features[0].properties);
+  //
+  // 属性はズームで2種類ある。最大ズームは buildFeatureCollection の属性がそのまま入り、
+  // 低ズームは間引き後の属性（name が落ち count が付く）が入る。ラベルは両方を
+  // 過不足なく覆う必要があるため、和集合と突き合わせる。
+  const fc = buildFeatureCollection(FACILITIES);
+  const detailProps = Object.keys(fc.features[0].properties);
+  const thinnedProps = Object.keys(thinFeatures(fc.features, 6)[0].properties);
+  const props = [...new Set([...detailProps, ...thinnedProps])];
   const m = HTML.match(/const TILE_PROP_LABELS = \{([^}]+)\}/);
   assert.ok(m, 'map.html に TILE_PROP_LABELS が定義されている');
   const labeled = [...m[1].matchAll(/^\s*([a-z_]+):/gm)].map((x) => x[1]);
