@@ -1,4 +1,4 @@
-// gen-readme-stats.js の整形ロジックを検証する。
+// readme-stats.js の整形ロジックを検証する。
 // renderStats() は純粋関数なので固定入力で検証する。
 //
 //   node scripts/generate/readme-stats.test.js

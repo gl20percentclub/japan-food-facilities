@@ -121,8 +121,7 @@ main を clone し、`npm ci --omit=dev` で依存を入れて `node scripts/cra
   クロール処理・正規化・生成ロジックはこのリポジトリが単一の情報源
 - クローラーは clone をそのまま作業ディレクトリにするため、`config/sources.yaml` も
   `README.md` も `api/` も既定の相対パスで解決される（環境変数での場所指定はしていない）
-- したがって `scripts/crawl.js` / `scripts/validate-api.js` /
-  `scripts/generate/attribution.js` / `scripts/tools/fetch-i2fas.js` の
+- したがって `scripts/crawl.js` / `scripts/validate-api.js` / `scripts/tools/fetch-i2fas.js` の
   リネーム・移動、`dependencies` の削除は**本番の週次クロールを直接壊す**。
   `scripts/crawler-contract.test.js` がこの契約を固定している。
   入口の名前を変えるときはクローラー側の `docker/entrypoint.sh` を同じタイミングで直す

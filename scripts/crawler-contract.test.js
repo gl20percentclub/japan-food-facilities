@@ -11,8 +11,10 @@
 //   npm ci --omit=dev                  ... clone 直下で依存を入れる（package-lock.json が要る）
 //   node scripts/crawl.js              ... クロール本体（api/ を生成し README 統計を更新）
 //   node scripts/validate-api.js       ... 配信物バリデーション（落ちたら配信しない）
-//   node scripts/generate/attribution.js ... 出典ページの生成
 //   node scripts/tools/fetch-i2fas.js  ... 月次の厚労省 i2fas 取得（別タスク）
+//
+// 出典ページ・llms.txt の生成はクローラーからは呼ばれない（生成元を持つこのリポジトリ側の
+// ワークフローが作る）ため、ここでは固定しない。
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -35,7 +37,6 @@ function test(name, fn) {
 const ENTRYPOINTS = [
   ['scripts/crawl.js', '週次クロール本体'],
   ['scripts/validate-api.js', '配信物バリデーション'],
-  ['scripts/generate/attribution.js', '出典ページ生成'],
   ['scripts/tools/fetch-i2fas.js', '月次 i2fas 取得'],
 ];
 

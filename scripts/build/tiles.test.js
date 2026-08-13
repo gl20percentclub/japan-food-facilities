@@ -1,4 +1,4 @@
-// gen-tiles.js のユニットテスト。
+// build/tiles.js のユニットテスト。
 //   node scripts/build/tiles.test.js
 // タイル座標計算(lonLatToTile)と、一時ディレクトリに対する generateTiles の生成結果を検証する。
 

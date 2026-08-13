@@ -1,4 +1,4 @@
-// gen-llms.js の整形ロジックを検証する。
+// llms.js の整形ロジックを検証する。
 // renderLlmsTxt() / renderLlmsFullTxt() / extractStats() / absolutizeLinks() は
 // 純粋関数なので固定入力で検証する。
 //

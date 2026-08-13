@@ -10,9 +10,9 @@
 //   lib/city-normmap.js  市区町村名の名寄せ（表記ゆれ→公式名）
 //
 // 配信物は3種類だけ（用途が無い階層JSONは配信しない）:
-//   api/facilities-all.csv[.gz]   全件の結合CSV（build-merged-csv.js）
-//   api/prefectures/*.csv         都道府県別CSV + index.json（build-prefecture-csv.js）
-//   api/tiles/{z}/{x}/{y}.pbf     地図用ベクトルタイル + metadata.json（gen-tiles.js）
+//   api/facilities-all.csv[.gz]   全件の結合CSV（build/merged-csv.js）
+//   api/prefectures/*.csv         都道府県別CSV + index.json（build/prefecture-csv.js）
+//   api/tiles/{z}/{x}/{y}.pbf     地図用ベクトルタイル + metadata.json（build/tiles.js）
 //
 // 使い方:
 //   node scripts/crawl.js              通常実行（ダウンロード→ジオコーディング→生成）
