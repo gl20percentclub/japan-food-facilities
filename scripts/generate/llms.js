@@ -12,7 +12,7 @@
 // 最新の統計へ追従する。生成物はリポジトリ直下に置かれ、gh-pages 配信で
 // サイトルート（/llms.txt /llms-full.txt）から取得できる。
 //
-//   node scripts/gen-llms.js   単体実行（README.md を読んで2ファイルを書き出す）
+//   node scripts/generate/llms.js   単体実行（README.md を読んで2ファイルを書き出す）
 // ---------------------------------------------------------------------------
 
 import fs from 'node:fs';
@@ -20,7 +20,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const ROOT = path.resolve(__dirname, '..');
+const ROOT = path.resolve(__dirname, '..', '..');
 const README_PATH = path.join(ROOT, 'README.md');
 
 // 配信 URL の基点。静的ページは GitHub Pages、データ（api/）は S3 + CloudFront
@@ -53,17 +53,40 @@ export function extractStats(readme) {
 }
 
 /**
+ * GitHub Pages に配信されるページ（site/ 配下のファイル名）。
+ * リポジトリのルートではなく site/ を publish_dir にしているため、
+ * ここに無いファイルは Pages の URL では取得できない。
+ */
+export const PUBLISHED_PAGES = new Set([
+  'index.html',
+  'map.html',
+  'playground.html',
+  'attribution.html',
+  'llms.txt',
+  'llms-full.txt',
+]);
+
+/**
  * README 内の相対リンクを絶対 URL に変換する（純粋関数）。
  * llms-full.txt は単体ファイルとして読まれるため、相対リンクのままだと
- * エージェントがリンク先を辿れない。リンク先の拡張子で基点を出し分ける:
- *   - .md   → GitHub raw（Markdown をそのまま fetch できる）
- *   - それ以外（.html 等） → GitHub Pages（配信されている実体）
+ * エージェントがリンク先を辿れない。リンク先ごとに基点を出し分ける:
+ *   - .md              → GitHub raw（Markdown をそのまま fetch できる）
+ *   - 配信されるページ  → GitHub Pages（配信されている実体）
+ *   - それ以外          → GitHub blob（LICENSE 等、Pages には無いリポジトリ内ファイル）
  * http(s)・ページ内アンカー（#）・mailto は変換しない。
+ *
+ * 判定はアンカー（#...）を外したパスで行う。`docs/DATA.md#収録範囲` のように
+ * アンカー付きのリンクが .md 判定から漏れ、Pages 側の URL になっていたことがある。
  */
 export function absolutizeLinks(markdown) {
   return markdown.replace(
     /\]\((?!https?:\/\/|#|mailto:)([^)]+)\)/g,
-    (_, target) => (target.endsWith('.md') ? `](${RAW}/${target})` : `](${PAGES}/${target})`),
+    (_, target) => {
+      const [filePath] = target.split('#');
+      if (filePath.endsWith('.md')) return `](${RAW}/${target})`;
+      if (PUBLISHED_PAGES.has(filePath)) return `](${PAGES}/${target})`;
+      return `](${REPO}/blob/main/${target})`;
+    },
   );
 }
 
@@ -132,7 +155,7 @@ ${stats}
  */
 export function renderLlmsFullTxt(readme) {
   const body = absolutizeLinks(stripHtmlNoise(readme)).trim();
-  return `<!-- このファイルは README.md から自動生成されています（scripts/gen-llms.js）。直接編集しないでください。 -->
+  return `<!-- このファイルは README.md から自動生成されています（scripts/generate/llms.js）。直接編集しないでください。 -->
 
 ${body}
 
@@ -236,7 +259,7 @@ export function generateLlmsFiles() {
   ];
   const written = [];
   for (const [name, content] of outputs) {
-    const outPath = path.join(ROOT, name);
+    const outPath = path.join(ROOT, 'site', name);
     // 既存内容と比較し、変わったときだけ書き込む
     const prev = fs.existsSync(outPath) ? fs.readFileSync(outPath, 'utf-8') : null;
     if (prev !== content) {
@@ -250,7 +273,7 @@ export function generateLlmsFiles() {
   return written;
 }
 
-// 単体実行（node scripts/gen-llms.js）されたときだけ生成を走らせる
+// 単体実行（node scripts/generate/llms.js）されたときだけ生成を走らせる
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   console.log('llms.txt / llms-full.txt を生成');
   generateLlmsFiles();

@@ -38,8 +38,9 @@ AI コーディングエージェント（Claude Code / Codex 等）向けのガ
 
 ```bash
 npm ci                  # 依存関係のインストール
-npm test                # 全テスト（unit + 統合）。PR 前に必ず通すこと
+npm test                # 全テスト（unit + 配信物バリデーション）。PR 前に必ず通すこと
 npm run test:unit       # 純粋関数のユニットテストのみ（高速）
+npm run test:api        # 生成済み api/ のバリデーション（クロール後でないと動かない）
 npm run build:dry       # キャッシュを使ったクロール（ダウンロードなし）
 npm run build           # 本番クロール（全ソースをダウンロード。重い・メモリ大量消費）
 npm run build:llms      # llms.txt / llms-full.txt を README から再生成
@@ -51,21 +52,33 @@ npm run build:attribution  # attribution.html を config/sources.yaml から再�
 
 ## リポジトリ構成
 
+全体像（生成物がどこで作られ、どこへ配信されるか）は [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+にまとめてある。図・生成物と生成元の対応表・やりたいこと別に触るファイルの一覧はそちらを見る。
+
 ```
+site/                   # gh-pages に配信する静的サイト（ここの中身がそのまま公開される）
+site/index.html         # LP
+site/map.html           # プレビュー地図
+site/playground.html    # map.html へのリダイレクトだけの薄いページ
 config/sources.yaml     # データソース定義（単一の情報源）。自治体の追加はここ
 scripts/crawl.js        # クローラー本体（取得→正規化→CSV・タイル生成のオーケストレーター）
+scripts/validate-api.js # 生成済み api/ のバリデーション（ユニットテストではない）
 scripts/lib/            # 取得・パース・正規化・ジオコーディング・名寄せの各実装
-scripts/*.test.js       # ユニットテスト（自前 assert、純粋関数を固定入力で検証）
+scripts/build/          # 配信物の生成（結合CSV・都道府県別CSV・ベクトルタイル）
+scripts/generate/       # ドキュメントの生成（attribution.html・llms*.txt・README統計）
+scripts/tools/          # 単発・保守用スクリプト（本番パイプラインからは呼ばれない）
+scripts/**/*.test.js    # ユニットテスト（自前 assert、純粋関数を固定入力で検証）
 docs/COVERAGE.md        # 自治体ごとの収録状況（自動生成）
 api/                    # 生成物（.gitignore 対象。Git 管理しない）
-llms.txt / llms-full.txt  # AI向けドキュメント（README から自動生成。直接編集しない）
-attribution.html        # 出典表示ページ（sources.yaml から自動生成。直接編集しない）
+site/llms.txt           # AI向けドキュメント（README から自動生成。直接編集しない）
+site/llms-full.txt      # 同上
+site/attribution.html   # 出典表示ページ（sources.yaml から自動生成。直接編集しない）
 ```
 
 ## 規約と注意点
 
 - コード・コメントは日本語。すべての関数に doc コメント、非自明なロジックにインラインコメントを書く
-- テストは `scripts/*.test.js` に自前 assert で書き、`package.json` の `test:unit` チェーンに追加する
+- テストは実装と同じディレクトリに `*.test.js` として自前 assert で書き、`package.json` の `test:unit` チェーンに追加する
 - 整形・生成ロジックは純粋関数として export し、テストは固定入力で検証する（既存テストの流儀に従う）
 - `llms.txt` / `llms-full.txt` / `attribution.html` / README の STATS ブロックは自動生成。
   内容を変えたいときは生成元（README 本文・テンプレート・`config/sources.yaml`）を変更する
@@ -87,9 +100,13 @@ attribution.html        # 出典表示ページ（sources.yaml から自動生�
 - gh-pages へ配信するワークフローは `pages.yml` **1本だけ**。gh-pages へデータを配信して
   いた旧 `crawl.yml` は廃止した（週次クロールは Fargate 側に一本化。復活していないことを
   `scripts/workflows.test.js` で固定している）
-- `publish_dir: .` のため `.gitignore` を配信対象から除外しないと、配信先で `git add --all`
-  したときに `api/` が一切コミットされない（過去に gh-pages のデータが全消えした。
-  workflows.test.js が再発を防いでいる）
+- 配信元は `site/` だけ（`publish_dir: site`）。`site/` の中身が gh-pages のルートに
+  置かれるため、公開 URL は `/index.html`・`/map.html`・`/llms.txt` のまま。
+  ページを追加するときは `site/` に置く（`pages.yml` の paths は `site/**` で一括）
+- かつては `publish_dir: .` で、README・docs/・config/・package.json まで配信されていた。
+  さらに `.gitignore` ごと配信されると配信先の `git add --all` で `api/` が無視され、
+  gh-pages のデータが全消えする事故があった。`site/` には `.gitignore` も
+  `node_modules` も無いため、この危険は構造的に消えている（workflows.test.js で固定）
 - `pages.yml` は `keep_files: true` のためファイル削除が反映されない。ページを削除・リネーム
   したときは gh-pages 上の旧ファイルを手動で消す
 
@@ -104,11 +121,13 @@ main を clone し、`npm ci --omit=dev` で依存を入れて `node scripts/cra
   クロール処理・正規化・生成ロジックはこのリポジトリが単一の情報源
 - クローラーは clone をそのまま作業ディレクトリにするため、`config/sources.yaml` も
   `README.md` も `api/` も既定の相対パスで解決される（環境変数での場所指定はしていない）
-- したがって `scripts/crawl.js` / `scripts/test.js` / `scripts/fetch-i2fas.mjs` の
+- したがって `scripts/crawl.js` / `scripts/validate-api.js` /
+  `scripts/generate/attribution.js` / `scripts/tools/fetch-i2fas.js` の
   リネーム・移動、`dependencies` の削除は**本番の週次クロールを直接壊す**。
-  `scripts/crawler-contract.test.js` がこの契約を固定している
+  `scripts/crawler-contract.test.js` がこの契約を固定している。
+  入口の名前を変えるときはクローラー側の `docker/entrypoint.sh` を同じタイミングで直す
 - 逆に、壊れたコードを main にマージすると次の週次実行が失敗する。`api/` は
-  バリデーション（`scripts/test.js`）を通らないと配信されないので、古いデータが
+  バリデーション（`scripts/validate-api.js`）を通らないと配信されないので、古いデータが
   配信され続ける（壊れたデータで上書きはされない）
 
 ## 生成物の所有権（このリポジトリが単一の情報源）
@@ -121,7 +140,7 @@ main を clone し、`npm ci --omit=dev` で依存を入れて `node scripts/cra
 
 - `pages.yml` は配信前に必ず生成物を作り直すため、公開ページは常に main の生成元と一致する
 - `generated-docs.yml` は main 上の生成物がずれていたら再生成してコミットする（自己修復）
-- `ci.yml` は PR でユニットテストを走らせる。生成物の同期テスト（`gen-attribution.test.js` 等）が
+- `ci.yml` は PR でユニットテストを走らせる。生成物の同期テスト（`scripts/generate/attribution.test.js` 等）が
   含まれるため、生成元だけ直して生成物を再生成し忘れた PR はここで落ちる
 - 過去の事故: クローラーが自リポジトリに持っていた古い `config/sources.yaml` の
   スナップショットから `attribution.html` を生成して main に push し、旧リポジトリ名と

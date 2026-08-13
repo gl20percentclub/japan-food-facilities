@@ -8,10 +8,11 @@
 // クローラーが依存している入口だけをテストで固定しておく。
 //
 // クローラー側の実行内容（docker/entrypoint.sh）:
-//   npm ci --omit=dev            ... clone 直下で依存を入れる（package-lock.json が要る）
-//   node scripts/crawl.js        ... クロール本体（api/ を生成し README 統計を更新）
-//   node scripts/test.js         ... 配信物バリデーション（落ちたら配信しない）
-//   node scripts/fetch-i2fas.mjs ... 月次の厚労省 i2fas 取得（別タスク）
+//   npm ci --omit=dev                  ... clone 直下で依存を入れる（package-lock.json が要る）
+//   node scripts/crawl.js              ... クロール本体（api/ を生成し README 統計を更新）
+//   node scripts/validate-api.js       ... 配信物バリデーション（落ちたら配信しない）
+//   node scripts/generate/attribution.js ... 出典ページの生成
+//   node scripts/tools/fetch-i2fas.js  ... 月次の厚労省 i2fas 取得（別タスク）
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -33,8 +34,9 @@ function test(name, fn) {
 // 名前を変えるならクローラー側の entrypoint.sh も同じ PR で直すこと。
 const ENTRYPOINTS = [
   ['scripts/crawl.js', '週次クロール本体'],
-  ['scripts/test.js', '配信物バリデーション'],
-  ['scripts/fetch-i2fas.mjs', '月次 i2fas 取得'],
+  ['scripts/validate-api.js', '配信物バリデーション'],
+  ['scripts/generate/attribution.js', '出典ページ生成'],
+  ['scripts/tools/fetch-i2fas.js', '月次 i2fas 取得'],
 ];
 
 for (const [rel, role] of ENTRYPOINTS) {
