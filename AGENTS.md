@@ -84,6 +84,8 @@ site/attribution.html   # 出典表示ページ（sources.yaml から自動生�
   内容を変えたいときは生成元（README 本文・テンプレート・`config/sources.yaml`）を変更する
 - 配信ワークフローの設定は `scripts/workflows.test.js` で固定されている。
   `pages.yml` / `generated-docs.yml` / `ci.yml` を変更したらこのテストも必ず確認する
+- **`scripts/` は本番の週次クロールがそのまま実行する**（下記「クロール実行の仕組み」）。
+  入口のファイル名・配置・依存の宣言は `scripts/crawler-contract.test.js` で固定してある
 
 ## 配信の仕組み
 
@@ -108,11 +110,32 @@ site/attribution.html   # 出典表示ページ（sources.yaml から自動生�
 - `pages.yml` は `keep_files: true` のためファイル削除が反映されない。ページを削除・リネーム
   したときは gh-pages 上の旧ファイルを手動で消す
 
+## クロール実行の仕組み（このリポジトリの `scripts/` が本番で動く）
+
+週次クロールは Fargate タスク（private リポジトリ `gl20percentclub/japan-facilities-crawler`）が
+実行するが、**動かすコードはこのリポジトリの `scripts/` そのもの**。クローラーは実行のたびに
+main を clone し、`npm ci --omit=dev` で依存を入れて `node scripts/crawl.js` を走らせる。
+イメージにコピーを焼かないので、main にマージした時点で次回のクロールに反映される。
+
+- クローラー側が持つのはインフラだけ（CDK・Docker・エントリポイント・S3/CloudFront 配信）。
+  クロール処理・正規化・生成ロジックはこのリポジトリが単一の情報源
+- クローラーは clone をそのまま作業ディレクトリにするため、`config/sources.yaml` も
+  `README.md` も `api/` も既定の相対パスで解決される（環境変数での場所指定はしていない）
+- したがって `scripts/crawl.js` / `scripts/validate-api.js` /
+  `scripts/generate/attribution.js` / `scripts/tools/fetch-i2fas.js` の
+  リネーム・移動、`dependencies` の削除は**本番の週次クロールを直接壊す**。
+  `scripts/crawler-contract.test.js` がこの契約を固定している。
+  入口の名前を変えるときはクローラー側の `docker/entrypoint.sh` を同じタイミングで直す
+- 逆に、壊れたコードを main にマージすると次の週次実行が失敗する。`api/` は
+  バリデーション（`scripts/validate-api.js`）を通らないと配信されないので、古いデータが
+  配信され続ける（壊れたデータで上書きはされない）
+
 ## 生成物の所有権（このリポジトリが単一の情報源）
 
-`config/sources.yaml` と、そこから作られる `attribution.html` / `llms.txt` / `llms-full.txt`
-は**このリポジトリが唯一の情報源**。クロールを実行する外部の基盤（private リポジトリ
-`gl20percentclub/japan-facilities-crawler` + Fargate）は、これらを生成・push してはならない。
+`config/sources.yaml` と、そこから作られる `attribution.html` / `llms.txt` / `llms-full.txt`、
+そして `scripts/` のクロール処理は**このリポジトリが唯一の情報源**。クロールを実行する外部の
+基盤（private リポジトリ `gl20percentclub/japan-facilities-crawler` + Fargate）は、
+これらのコピーを持たず、実行時に毎回このリポジトリから取得して使う。
 外部が渡してよいのは README の STATS ブロック（クロール結果の統計）だけ。
 
 - `pages.yml` は配信前に必ず生成物を作り直すため、公開ページは常に main の生成元と一致する
