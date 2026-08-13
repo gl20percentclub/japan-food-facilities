@@ -141,7 +141,7 @@ Claude CodeやCodexなどに、次のURLを渡してください。
 | 対象          | 条件                  |
 | ----------- | ------------------- |
 | CSV・ベクトルタイル | 各元データのライセンス・利用条件に従う |
-| リポジトリ内のコード  | MIT License         |
+| リポジトリ内のコード  | [MIT License](LICENSE) |
 
 本データは、商用・非商用を問わず、アプリ、Webサービス、研究、分析、再配布などに利用できます。
 
@@ -162,3 +162,5 @@ https://gl20percentclub.github.io/japan-food-facilities/attribution.html
 バグ報告、データソース追加、ドキュメント改善、機能提案を歓迎します。
 
 開発環境のセットアップやプルリクエストの手順は、[`CONTRIBUTING.md`](CONTRIBUTING.md)を参照してください。
+
+リポジトリの構成、データが生成・配信される流れ、やりたいこと別に触るファイルは、[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)にまとめています。

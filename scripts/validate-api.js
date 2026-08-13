@@ -1,17 +1,21 @@
-// 生成した配信物が正しいことを確認するバリデーションスクリプト。
+// 生成した配信物（api/）が正しいことを確認するバリデーションスクリプト。
+//
+// 隣にある scripts/*.test.js とは別物で、純粋関数のユニットテストではない。
+// クロール後の api/ が存在していないと動かないため、`npm run test:unit` には含めず
+// `npm run test:api`（`npm test` の後半）で実行する。
 //
 // 検証対象は配信する3形式だけ:
 //   api/facilities-all.csv[.gz]   全件の結合CSV
 //   api/prefectures/*.csv         都道府県別CSV + index.json
 //   api/tiles/{z}/{x}/{y}.pbf     ベクトルタイル + metadata.json（TileJSON）
 //
-//   node scripts/test.js
+//   node scripts/validate-api.js
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CSV_COLUMNS } from './build-merged-csv.js';
-import { INDEX_FILENAME, PREFECTURES } from './build-prefecture-csv.js';
+import { CSV_COLUMNS } from './build/merged-csv.js';
+import { INDEX_FILENAME, PREFECTURES } from './build/prefecture-csv.js';
 import { readCsvRows } from './lib/csv-read.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
