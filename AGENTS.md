@@ -19,7 +19,7 @@ AI コーディングエージェント（Claude Code / Codex 等）向けのガ
   - 例 `13.csv`（東京都）/ `01.csv`（北海道）。47都道府県すべて存在し、列・内容は全件CSV と同じ。
     ファイル一覧と件数は `api/prefectures/index.json`。1県だけ必要ならこちらを使う
 - ベクトルタイル（MVT）: `https://food.japan-facilities.com/api/tiles/{z}/{x}/{y}.pbf`
-  - レイヤ名 `facilities`、z6–12、属性 `name` / `business_type` / `pref` / `city`
+  - レイヤ名 `facilities`、z3–12、属性 `name` / `business_type` / `pref` / `city`
 - 市区町村別 CSV/JSON や検索 API は**このリポジトリからは配信していない**。データ抽出は
   CSV（DuckDB 推奨）、地図表示はタイルを使う。ブラウザから非圧縮 CSV を直接 fetch しない
 - `map.html` は統計表示と業種フィルターだけの最小構成のプレビュー地図。業種の分類は

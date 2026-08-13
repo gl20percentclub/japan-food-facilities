@@ -50,7 +50,7 @@ https://food.japan-facilities.com/api/facilities-all.csv
 | ------------- | ------------------------------------------------------------- |
 | タイルURL        | `https://food.japan-facilities.com/api/tiles/{z}/{x}/{y}.pbf` |
 | Source layer名 | `facilities`                                                  |
-| 対応ズーム         | `6`〜`12`                                                      |
+| 対応ズーム         | `3`〜`12`                                                      |
 | 属性          | `name`（施設名） / `business_type`（営業許可・届出の業種） / `pref`（都道府県名） / `city`（市区町村名）                    |
 
 ※ ベクトルタイルは軽量化のため上記の属性に絞って配信しています
@@ -65,7 +65,7 @@ map.addSource("facilities", {
   tiles: [
     "https://food.japan-facilities.com/api/tiles/{z}/{x}/{y}.pbf",
   ],
-  minzoom: 6,
+  minzoom: 3,
   maxzoom: 12,
   attribution:
     '出典：<a href="https://gl20percentclub.github.io/japan-food-facilities/">Japan Food Facilities</a>（<a href="https://gl20percentclub.github.io/japan-food-facilities/attribution.html" target=">自治体・厚生労働省が公開する食品営業許可オープンデータを加工して作成</a>）',
