@@ -55,6 +55,10 @@ https://food.japan-facilities.com/api/facilities-all.csv
 
 ※ ベクトルタイルは軽量化のため上記の属性に絞って配信しています
 
+※ 最大ズーム（`12`）未満のタイルは、同じ画素に重なる同業種・同一自治体の施設を1点にまとめて配信しています。まとめた点には施設名（`name`）が入らず、代わりに元の件数が `count` に入ります。1軒ずつの施設名が必要な場合はズーム `12` のタイル、または CSV を参照してください。まとめる単位は `metadata.json` の `thinning`（`detail_zoom` / `cells_per_tile`）で確認できます
+
+※ タイルは gzip 圧縮された状態で配信しています（`Content-Encoding: gzip`）。ブラウザや MapLibre GL JS からは自動で解凍されるため、通常は意識する必要はありません
+
 ```js
 map.addSource("facilities", {
   type: "vector",
