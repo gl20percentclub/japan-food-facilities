@@ -8,8 +8,8 @@
 
 - 全件CSV（gzip 版は配信していない）: https://food.japan-facilities.com/api/facilities-all.csv
 - 都道府県別CSV（列・内容は全件CSV と同じ。1県だけ必要ならこちらを使う）:
-  https://food.japan-facilities.com/api/prefectures/{JISコード2桁}-{ローマ字}.csv
-  例 13-tokyo.csv / 01-hokkaido.csv / 47-okinawa.csv。47都道府県すべて存在する。
+  https://food.japan-facilities.com/api/prefectures/{都道府県コード2桁}.csv
+  例 13.csv（東京都）/ 01.csv（北海道）/ 47.csv（沖縄県）。47都道府県すべて存在する。
   ファイル一覧と件数: https://food.japan-facilities.com/api/prefectures/index.json
 - CSV は UTF-8（BOMなし）。列: prefecture, city, city_raw, name, name_kana,
   business_type, address, lat, lng, geocoding_level, phone, license_no,
@@ -22,21 +22,24 @@
 - 全ファイル CORS 開放済み（Access-Control-Allow-Origin: *）。URL は更新後も不変
 - 毎週月曜 18:00 UTC（JST 火曜 3:00）に自動更新
 
-**最終更新: 2026-08-01**
+**最終更新: 2026-08-10**
 
 | 項目 | 値 |
 |---|---|
-| 施設レコード数 | 1,488,756 件 |
-| 座標を持つ施設 | 1,359,322 件 |
-| 都道府県 | 48 |
-| 市区町村 | 1,796 |
-| 結合CSV | 約 430.3 MB |
-| ベクトルタイル | 8,866 枚 / 約 469.1 MB |
+| 施設レコード数 | 1,365,875 件 |
+| 座標を持つ施設 | 1,263,141 件 |
+| 都道府県 | 47 |
+| 市区町村 | 1,726 |
+| うち市区町村を特定できない施設 | 37,558 件 |
+| 結合CSV | 約 401.1 MB |
+| 都道府県別CSV | 47 ファイル / 約 401.1 MB |
+| ベクトルタイル | 8,770 枚 / 約 438.7 MB |
 
 ## ドキュメント
 
 - [llms-full.txt](https://gl20percentclub.github.io/japan-food-facilities/llms-full.txt): データ仕様・利用例・注意事項の全文（まずこれを読む）
 - [README](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/README.md): プロジェクト概要
+- [データの詳細](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md): 収集元・正規化・収録範囲・緯度経度の精度・鮮度・更新頻度
 - [収録状況](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/COVERAGE.md): 自治体ごとの収録有無・取得元・ライセンスの一覧
 - [タイルメタデータ](https://food.japan-facilities.com/api/tiles/metadata.json): TileJSON（レイヤ定義・ズーム範囲・bounds）
 - [地図ページ](https://gl20percentclub.github.io/japan-food-facilities/map.html): 収録データをベクトルタイルで表示するプレビュー地図
