@@ -205,13 +205,15 @@
     // CORS は全オリジン許可済みなので、ローカルで開いた場合もそのまま読める。
     const API_BASE = 'https://food.japan-facilities.com/api';
     // ベクトルタイルのズーム範囲（scripts/build/tiles.js の設定と一致させる）
-    const TILE_MIN_ZOOM = 6;
+    const TILE_MIN_ZOOM = 3;
     const TILE_MAX_ZOOM = 12;
     // 日本のおおよその範囲 [west, south, east, north]
     const JAPAN_BOUNDS = [122, 20, 154, 46];
-    // 初期表示の中心（本州中央部あたり）。ズームはタイルの最小ズームに合わせるため、
-    // 全国を収める fitBounds ではなく中心＋ズーム指定で開く。
+    // 初期表示の中心（本州中央部あたり）。
     const INITIAL_CENTER = [138.2, 36.4];
+    // 初期表示のズーム。z4 で北海道から沖縄までが1画面に収まる。
+    // タイルの最小ズーム（z3）まで焼いてあるので、最小ズームと揃える必要はない。
+    const INITIAL_ZOOM = 4;
 
     // 業種の分類は食品衛生法の定義に合わせる。
     //   営業許可 32業種（食品衛生法施行令 第35条。2021年6月施行）を法令の区分
@@ -389,11 +391,12 @@
           },
         ],
       },
-      // 開いた直後から施設の点が見えるよう、初期ズームをタイルの最小ズームに合わせる
-      // （全国を収める fitBounds だと z5 以下になり、タイルが無くて点が出ない）。
+      // 開いた直後から全国の点が見えるズームで開く（INITIAL_ZOOM の定義を参照）。
       center: INITIAL_CENTER,
-      zoom: TILE_MIN_ZOOM,
-      minZoom: 3,
+      zoom: INITIAL_ZOOM,
+      // 地図の下限はタイルの最小ズームと揃える。これより引けるようにすると
+      // タイルが無いズームに到達でき、点が消えて見える。
+      minZoom: TILE_MIN_ZOOM,
       maxZoom: 18,
       attributionControl: false,
     });
