@@ -194,7 +194,7 @@ test('業種の記載なしを「その他」と混ぜない', () => {
 });
 
 test('フィルターがタイルの business_type 属性を見ている', () => {
-  // 属性名が gen-tiles の出力とズレると、絞り込みが全件0件になる。
+  // 属性名が build/tiles.js の出力とズレると、絞り込みが全件0件になる。
   assert.ok(/\['get', 'business_type'\]/.test(HTML), "['get', 'business_type'] で属性を読む");
   assert.ok(/setFilter\('facilities-circle'/.test(HTML), 'facilities-circle レイヤに setFilter する');
 });

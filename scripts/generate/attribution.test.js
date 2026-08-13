@@ -1,4 +1,4 @@
-// gen-attribution.js の分類・整形ロジックと、生成物 attribution.html の同期を検証する。
+// attribution.js の分類・整形ロジックと、生成物 attribution.html の同期を検証する。
 //
 //   node scripts/generate/attribution.test.js
 
