@@ -31,7 +31,12 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const TILES_DIR = path.join(ROOT, 'api', 'tiles');
 const LAYER = 'facilities';
 
-const MIN_ZOOM = Number(process.env.TILES_MIN_ZOOM ?? 6);
+// 最小ズーム。プレビュー地図（site/map.html）が地図自体の下限を z3 にしているため、
+// z3 まで焼いておけば「引くと点が消える」ズームが無くなる。
+// 間引き後は低ズームのコストがほぼ無い（z3〜z5 の 3 ズームを足しても gzip 前で +5.7MB。
+// タイル数が 3/3/6 枚しかないため）ので、下限を上げて節約する意味がない。
+// 逆に z6 開始だと初期表示で日本全体が入らず、狭い範囲を密なタイルで埋めることになる。
+const MIN_ZOOM = Number(process.env.TILES_MIN_ZOOM ?? 3);
 const MAX_ZOOM = Number(process.env.TILES_MAX_ZOOM ?? 12);
 // gzip の圧縮レベル。9 にしても縮むのは 1% 未満で、タイル数が数万枚あるぶん
 // 生成時間だけが伸びるため既定の 6 を使う。

@@ -51,7 +51,7 @@ async function withTiles(opts, fn) {
 
 await test('source-layer が タイル生成の出力レイヤ名(metadata.vector_layers[0].id)と一致する', async () => {
   const sourceLayer = htmlValue(/'source-layer':\s*'([^']+)'/, 'source-layer');
-  await withTiles({ minZoom: 6, maxZoom: 12 }, (meta) => {
+  await withTiles({ minZoom: 3, maxZoom: 12 }, (meta) => {
     assert.equal(sourceLayer, meta.vector_layers[0].id, `source-layer(${sourceLayer}) == 生成レイヤ(${meta.vector_layers[0].id})`);
   });
 });
@@ -67,14 +67,19 @@ await test('TILE_MIN_ZOOM / TILE_MAX_ZOOM が タイル生成の既定ズーム�
 });
 
 await test('初期ズームがタイルの最小ズーム以上で、開いた直後から点が出る', async () => {
-  // fitBounds で全国を収めると z5 以下になり、タイルが無くて点が1つも出ない。
-  // 初期ズームはタイルの最小ズームに合わせる（定数を直接使っていることも確認する）。
-  assert.ok(/zoom: TILE_MIN_ZOOM/.test(HTML), '初期ズームに TILE_MIN_ZOOM を使う');
+  // タイルが無いズームで開くと点が1つも出ない。初期ズームは必ずタイルの
+  // 最小ズーム以上にする（定数を直接使っていることも確認する）。
+  assert.ok(/zoom: INITIAL_ZOOM/.test(HTML), '初期ズームに INITIAL_ZOOM を使う');
   assert.ok(!/fitBoundsOptions/.test(HTML), '全国 fitBounds で初期表示していない');
   await withTiles({}, (meta) => {
-    const minZoom = Number(htmlValue(/TILE_MIN_ZOOM\s*=\s*(\d+)/, 'TILE_MIN_ZOOM'));
-    assert.ok(minZoom >= meta.minzoom, `初期ズーム(${minZoom}) がタイルの最小ズーム(${meta.minzoom})以上`);
+    const initialZoom = Number(htmlValue(/INITIAL_ZOOM\s*=\s*(\d+)/, 'INITIAL_ZOOM'));
+    assert.ok(
+      initialZoom >= meta.minzoom,
+      `初期ズーム(${initialZoom}) がタイルの最小ズーム(${meta.minzoom})以上`,
+    );
   });
+  // 地図の下限がタイルの最小ズームより下だと、引いたときに点が消えるズームに到達できる。
+  assert.ok(/minZoom: TILE_MIN_ZOOM/.test(HTML), '地図の下限をタイルの最小ズームに揃える');
   // 初期中心が日本の範囲（タイルの bounds）に収まっていること。
   const center = htmlValue(/INITIAL_CENTER = \[([^\]]+)\]/, 'INITIAL_CENTER')
     .split(',').map((v) => Number(v.trim()));
@@ -89,7 +94,7 @@ await test('タイルURLテンプレートが「api/tiles/ + metadata.tiles[0]�
   // API_BASE と組み立て後のパスを突き合わせ、配信物の配置と一致するか検証する。
   const apiBase = htmlValue(/API_BASE\s*=\s*'([^']+)'/, 'API_BASE');
   assert.ok(apiBase.endsWith('/api'), `API_BASE(${apiBase}) が api/ を指す`);
-  await withTiles({ minZoom: 6, maxZoom: 12 }, (meta) => {
+  await withTiles({ minZoom: 3, maxZoom: 12 }, (meta) => {
     const expectedPath = `\${API_BASE}/tiles/${meta.tiles[0]}`; // = ${API_BASE}/tiles/{z}/{x}/{y}.pbf
     assert.ok(HTML.includes(expectedPath), `map.html がタイルパス ${expectedPath} を参照する`);
     // 組み立て結果が生成物の配置（api/tiles/{z}/{x}/{y}.pbf）と一致することを確認する。
@@ -127,7 +132,7 @@ await test('ヘッダーの統計が参照する metadata.stats のキーがす�
   // 統計用の JSON は配信しないため、件数は metadata.json（TileJSON）から読む。
   const referenced = new Set([...HTML.matchAll(/\bstats\.([a-z_]+)\b/g)].map((m) => m[1]));
   assert.ok(referenced.size >= 1, `map.html が metadata.stats を参照している (${[...referenced].join(',')})`);
-  await withTiles({ minZoom: 6, maxZoom: 12 }, (meta) => {
+  await withTiles({ minZoom: 3, maxZoom: 12 }, (meta) => {
     for (const key of referenced) {
       assert.ok(key in meta.stats, `metadata.stats.${key} が生成される`);
     }
