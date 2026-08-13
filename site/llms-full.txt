@@ -120,6 +120,7 @@ Claude CodeやCodexなどに、次のURLを渡してください。
 | ------------------------------------------------- | --------------------------------------------------------- |
 | [収録範囲](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md#収録範囲)                     | 全国1,741市区町村のうち1,727市区町村（99%）をカバー          |
 | [緯度経度](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md#緯度経度)                   | 元データに座標がない場合は住所からジオコーディング。精度は`geocoding_level`で確認 |
+| [座標の品質](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md#座標の品質フィルタ)       | 施設の位置として信用できない座標は除去済み。レコード自体は残る |
 | [鮮度と網羅性](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md#鮮度と網羅性)           | 廃業済みや許可期限切れの施設が含まれる場合がある            |
 | [更新頻度](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md#更新頻度)                   | 毎週月曜18:00 UTC（日本時間 火曜3:00）に自動更新。URLは不変 |
 
@@ -231,8 +232,12 @@ map.addLayer({
   （または DuckDB-Wasm + HTTP range request）で行う。
 - CSV は UTF-8 **BOMなし**。gzip 圧縮版（.csv.gz）は配信していない。
 - `lat` / `lng` は座標を補完できなかった施設では空になる。地図利用時は必ず除外する。
-- `geocoding_level` が小さいほど座標は大まか（1=都道府県、2=市区町村、3=町丁目、8=街区・地番）。
-  建物単位の精度が必要なら level を確認する。
+- `geocoding_level` が小さいほど座標は大まか（3=町丁目、8=街区・地番）。空欄は元データに
+  含まれていた座標。建物単位の精度が必要なら level を確認する。
+- 施設の位置として信用できない座標（実体のない住所に付いた座標、公開元が一括で埋めた代表点、
+  都道府県・市区町村の代表点 = level 1/2、都道府県の外に落ちた座標）は配信前に除去済み。
+  除くのは座標だけで、レコードは残る（`lat` / `lng` が空になる）。
+- 同一施設とみなせる近接レコード（正規化した施設名が一致し 50m 以内）の座標は1点に統一済み。
 - 同一施設が業種違いで複数レコード存在する。ユニーク施設が必要なら name + lat/lng で重複排除する。
 - キーワード検索・位置検索（「近くのラーメン屋」等）を提供したい場合は、静的配信のみの
   ため検索 API は無い。CSV を SQLite や PostgreSQL 等に取り込んで自前の検索を実装する。

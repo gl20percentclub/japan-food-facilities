@@ -90,6 +90,9 @@ japan-food-facilities/
 | 正規化 | `lib/normalize.js` | 自治体ごとにバラバラな列名を内部キーに寄せ、共通の項目へ変換する |
 | 名寄せ | `lib/city-normmap.js` | 市区町村の表記ゆれを正規化する |
 | ジオコーディング | `lib/geocode.js` | 座標を持たないレコードを住所から補完する |
+| 座標の品質フィルタ | `lib/coord-quality.js` | 施設の位置として信用できない座標を落とす（レコードは残す） |
+| 行政界の突き合わせ | `lib/pref-boundary.js` | 都道府県の外に落ちている座標を落とす |
+| 座標の統一 | `lib/name-cluster.js` | 同一施設とみなせる近接レコードの座標を1点に寄せる |
 | 出力 | `build/*.js` | 結合CSV・都道府県別CSV・ベクトルタイルを `api/` に書き出す |
 
 生成物が正しいかは `scripts/validate-api.js`（`npm run test:api`）が検証します。
