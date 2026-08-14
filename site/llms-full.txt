@@ -145,6 +145,12 @@ https://gl20percentclub.github.io/japan-food-facilities/attribution.html
 
 各レコードの出典とライセンスは、CSVの`sources`列と`licenses`列でも確認できます。
 
+## 提供条件
+
+現在は無償で配信していますが、配信内容・URL・更新頻度・提供条件は、**予告なく変更または終了する場合があります**。可用性やサポートについての保証はありません。
+
+継続的な提供をご希望の方には、有償サポートも承っています。本番環境・業務システムでの利用を検討されている場合は、[お問い合わせフォーム](https://docs.google.com/forms/d/e/1FAIpQLSf5X5glzmdmHfPz-KWc0pRfUmcZFtJrJmo1-Hyv5ZJXmZzrFA/viewform)からご相談ください。
+
 ## コントリビューション
 
 バグ報告、データソース追加、ドキュメント改善、機能提案を歓迎します。

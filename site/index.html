@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Japan Food Facilities — 日本全国の飲食施設オープンデータを無料の静的 API で</title>
-  <meta name="description" content="全国の自治体が公開する食品営業許可・届出のオープンデータを、正規化・ジオコーディングして無料で配信。登録不要・API キー不要で、全件 CSV とベクトルタイルをそのまま利用できます。">
+  <title>Japan Food Facilities — 日本全国の飲食施設オープンデータを CSV とベクトルタイルで</title>
+  <meta name="description" content="全国の自治体が公開する食品営業許可・届出のオープンデータを、全国共通フォーマットに正規化・ジオコーディングして配信。全件 CSV とベクトルタイルをそのまま利用できます。">
 
   <!-- SNS シェア時のカード表示（画像は用意していないためテキストのみ） -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="Japan Food Facilities">
-  <meta property="og:description" content="日本全国の飲食施設オープンデータ（食品営業許可・届出）を、登録不要・無料の静的 API として配信。">
+  <meta property="og:description" content="日本全国の飲食施設オープンデータ（食品営業許可・届出）を、全件 CSV とベクトルタイルで配信。">
   <meta property="og:url" content="https://gl20percentclub.github.io/japan-food-facilities/">
   <meta name="twitter:card" content="summary">
 
@@ -164,7 +164,7 @@
   <!-- ================= ヒーロー ================= -->
   <header class="hero">
     <div class="wrap">
-      <span class="eyebrow">登録不要 · API キー不要 · 無料</span>
+      <span class="eyebrow">オープンデータ · 出典表示で商用利用可 · 毎週自動更新</span>
       <h1>日本全国の飲食施設オープンデータを<br><span class="accent">そのまま使える API</span> に</h1>
       <p>
         全国の自治体が公開する食品営業許可・届出のオープンデータを毎週自動でクロールし、
@@ -220,9 +220,9 @@
           <p>分析用の全件 CSV と、地図用のベクトルタイル。用途に合わせて選べます。</p>
         </div>
         <div class="card">
-          <span class="ico">🆓</span>
-          <h3>静的配信で無料</h3>
-          <p>GitHub Pages でホスティング。登録・認証・レート制限はありません。CORS も開放済みです。</p>
+          <span class="ico">🔗</span>
+          <h3>URL は不変</h3>
+          <p>更新後も配信 URL は変わりません。CORS も開放済みなので、ブラウザから直接読み込めます。</p>
         </div>
       </div>
     </div>
@@ -348,6 +348,25 @@ print(naha[['name', 'address', 'lat', 'lng']].head())</code></pre>
     </div>
   </section>
 
+  <!-- ================= 提供条件 ================= -->
+  <section id="availability">
+    <div class="wrap">
+      <h2>提供条件について</h2>
+      <div class="notice">
+        <strong>現在は無償で配信していますが、予告なく変更・停止する場合があります。</strong><br>
+        配信内容・URL・更新頻度・提供条件は、予告なく変更または終了することがあります。
+        可用性やサポートについての保証はありません。
+      </div>
+      <div class="notice">
+        <strong>継続的な提供をご希望の方には、有償サポートも承っています。</strong><br>
+        本番環境・業務システムでの利用をご検討の場合は、お問い合わせください。
+      </div>
+      <div class="cta" style="justify-content:flex-start;margin-top:20px">
+        <a class="btn primary" href="https://docs.google.com/forms/d/e/1FAIpQLSf5X5glzmdmHfPz-KWc0pRfUmcZFtJrJmo1-Hyv5ZJXmZzrFA/viewform" target="_blank" rel="noopener">本番利用・有償サポートの相談</a>
+      </div>
+    </div>
+  </section>
+
   <!-- ================= コントリビュート ================= -->
   <section id="contribute">
     <div class="wrap">
@@ -368,6 +387,7 @@ print(naha[['name', 'address', 'lat', 'lng']].head())</code></pre>
       <p>
         <a href="./map.html">地図</a> ·
         <a href="./attribution.html">出典・ライセンス</a> ·
+        <a href="#availability">提供条件</a> ·
         <a href="https://github.com/gl20percentclub/japan-food-facilities">GitHub</a> ·
         <a href="https://github.com/gl20percentclub/japan-food-facilities/issues">Issues</a>
       </p>
