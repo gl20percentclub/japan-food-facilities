@@ -73,6 +73,8 @@ Japan Food Facilitiesで配信しているデータの収集元、加工方法�
 
 ### 座標の品質フィルタ
 
+図解つきの解説は[座標の品質](https://gl20percentclub.github.io/japan-food-facilities/coord-quality.html)にあります。
+
 施設の位置として信用できない緯度経度は、配信前に取り除いています。取り除くのは緯度経度だけで、レコード自体は残ります。施設名・住所・業種・許可番号はそのまま利用できます。
 
 | 取り除く座標                     | 理由                                                             |
@@ -120,4 +122,5 @@ Japan Food Facilitiesで配信しているデータの収集元、加工方法�
 * [README](../README.md)
 * [自治体ごとの収録状況](COVERAGE.md)
 * [出典・ライセンス一覧](https://gl20percentclub.github.io/japan-food-facilities/attribution.html)
+* [座標の品質（図解）](https://gl20percentclub.github.io/japan-food-facilities/coord-quality.html)
 * [ベクトルタイルのメタデータ](https://food.japan-facilities.com/api/tiles/metadata.json)
