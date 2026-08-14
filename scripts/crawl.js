@@ -224,8 +224,7 @@ async function main() {
   } else {
     console.log('\n▼ 座標の品質フィルタ');
     applyCoordQuality(facilities, { isPlaceholderAddress });
-    // 行政界との突き合わせは、上の3ルールで明らかに無効な座標を落としてから行う
-    // （判定対象が減るぶん速く、代表点フォールバックを県外として二重に数えない）。
+    // 行政界との突き合わせは、明らかに無効な座標を落としてから行う（判定対象が減る）。
     await applyPrefBoundary(facilities, { dropCoord });
     // 名寄せは最後。信用できない座標を全部落としたあとに実行しないと、代表点や
     // 県外の座標が代表点として選ばれ、正しい座標の方をそこへ引き寄せてしまう。

@@ -112,6 +112,26 @@ assert(
   `単連結で繋がらない（a-b は同じ、c は別。実際 ${chained.length}グループ）`,
 );
 
+// 格子の取りこぼし回帰: セル幅を点ごとの緯度から計算していた頃、緯度35度で
+// 48.9m 離れた2点がセル添字のずれで別グループになっていた。
+const gridBug = [
+  { lat: 35.0, lng: 139.0, id: 'p' },
+  { lat: 35.0 - 0.00044, lng: 139.0, id: 'q' }, // p から約48.9m
+];
+assert(
+  clusterByDistance(gridBug, 50).length === 1,
+  '半径内の2点が格子のずれで取りこぼされない（緯度35度・48.9m）',
+);
+// 高緯度（北海道）でも同じことを確認する
+const north = [
+  { lat: 45.4, lng: 141.7, id: 'p' },
+  { lat: 45.4, lng: 141.7 + 0.0006, id: 'q' }, // 約47m（高緯度では経度差が大きくなる）
+];
+assert(
+  clusterByDistance(north, 50).length === 1,
+  '高緯度でも半径内の2点が同じグループになる（北緯45.4度・約47m）',
+);
+
 // --- unifyCoordsByName ---
 const facilities = [
   // 同一施設が2ソースに載っているケース: 元データ座標と level 3 が約22m ずれている
@@ -150,6 +170,36 @@ const noName = [
 ];
 const s2 = unifyCoordsByName(noName, { radiusM: 50, log: () => {} });
 assert(s2.moved === 0, '名前が空のレコードは名寄せ対象にしない');
+
+// --- 移動距離の上限: 代表座標から radiusM を超える行は動かさない ---
+// 先頭を 0m に置き、A を −49m、C（元データ座標）を +44.5m に置く。A も C も先頭から
+// 50m 以内なので同じまとまりに入るが、代表座標は C の位置になり A からは 93.5m 離れる。
+// 0.00044度 ≒ 49.0m（先頭から50m以内）/ 0.0004度 ≒ 44.5m
+const overshoot = [
+  { name: 'ラーメン太郎', pref: '東京都', lat: 35.0, lng: 139.0, geocoding_level: 3 },          // 先頭
+  { name: 'ラーメン太郎', pref: '東京都', lat: 35.0 - 0.00044, lng: 139.0, geocoding_level: 3 }, // A
+  { name: 'ラーメン太郎', pref: '東京都', lat: 35.0 + 0.0004, lng: 139.0, geocoding_level: null }, // C
+];
+const s3 = unifyCoordsByName(overshoot, { radiusM: 50, log: () => {} });
+const repLat = 35.0 + 0.0004;
+assert(
+  overshoot[0].lat === repLat,
+  '先頭（代表座標から44.5m）は代表座標へ動く',
+);
+assert(
+  overshoot[1].lat === 35.0 - 0.00044,
+  '代表座標から93.5m離れた行は動かさない（移動距離の上限が半径と一致する）',
+);
+assert(s3.skipped === 1, `据え置きを1件と数える（実際 ${s3.skipped}）`);
+assert(s3.moved === 1, `動かしたのは1件（実際 ${s3.moved}）`);
+
+// 移動距離が radiusM を超えないことを全パターンで確認する
+for (const f of [overshoot[0], overshoot[2]]) {
+  assert(
+    distanceMeters(f.lat, f.lng, repLat, 139.0) <= 50,
+    '動かした行はすべて代表座標から50m以内にある',
+  );
+}
 
 console.log(failures === 0 ? '\n✅ すべて成功' : `\n❌ ${failures}件 失敗`);
 process.exit(failures === 0 ? 0 : 1);

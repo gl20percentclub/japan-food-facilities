@@ -35,6 +35,15 @@ const EARTH_RADIUS_M = 6371000;
 /** 緯度1度あたりの距離（メートル）。格子のセルサイズを決めるのに使う。 */
 const METERS_PER_DEG_LAT = 111320;
 
+// 経度方向のセル幅を決めるための cos(緯度) の下限。
+//
+// 経度1度の距離は高緯度ほど短くなるため、同じ距離を表す経度の差は高緯度ほど大きい。
+// セル幅を点ごとの緯度から計算すると、近接する2点が別々の幅で量子化されてセル添字が
+// 2つ以上ずれ、周囲9セルの探索から漏れる（緯度35度・48.9m離れた2点が別グループに
+// なるバグが実際に起きた）。全点で共通の固定幅を使い、日本の最北端（北緯約45.6度、
+// cos≈0.70）でもセル幅が半径以上になるようにする。
+const GRID_COS_MIN = 0.65;
+
 /**
  * 施設名を名寄せ用のキーに正規化する（純粋関数）。
  * NFKC で全角半角を揃え、大文字化し、法人格と記号・空白を落とす。
@@ -115,13 +124,13 @@ export function pickRepresentative(members) {
  * チェーン店のように同名が数百件ある場合でも総当たりにならない。
  */
 export function clusterByDistance(members, radiusM) {
+  // 全点で共通のセル幅を使う（点ごとに幅を変えると添字が2つ以上ずれて探索が漏れる）
   const cellLat = radiusM / METERS_PER_DEG_LAT;
+  const cellLng = radiusM / (METERS_PER_DEG_LAT * GRID_COS_MIN);
   const clusters = [];
   const grid = new Map(); // セルキー -> そのセルにリーダーがいるクラスタの添字
 
   for (const m of members) {
-    const cosLat = Math.max(0.01, Math.cos((m.lat * Math.PI) / 180));
-    const cellLng = radiusM / (METERS_PER_DEG_LAT * cosLat);
     const r = Math.floor(m.lat / cellLat);
     const c = Math.floor(m.lng / cellLng);
 
@@ -159,9 +168,15 @@ export function clusterByDistance(members, radiusM) {
  * geocoding_level は書き換えない。座標を精度の高いものに差し替えても、その行自身の
  * 住所から解けた精度は変わらないため、level は「精度の下限」として正しいまま残る。
  *
+ * 移動距離は radiusM 以下に収まることを保証する。まとまりに入る条件は「先頭の1件から
+ * radiusM 以内」なので、まとまりの直径は最大 2×radiusM になる。代表座標は先頭ではなく
+ * 精度上位の中央値なので、条件を満たしていても代表座標から radiusM を超える行が出る
+ * （実測で最大 72.8m）。そのため代表座標から radiusM を超える行は動かさない。
+ * 「半径 radiusM で統合する」という説明を、実際の挙動と一致させるための制限。
+ *
  * @param {Array} facilities 施設（name / pref / lat / lng / geocoding_level を持つ）
  * @param {{radiusM?:number, log?:Function}} options
- * @returns {{moved:number, clusters:number, groups:number}}
+ * @returns {{moved:number, skipped:number, clusters:number, groups:number}}
  */
 export function unifyCoordsByName(facilities, { radiusM = 50, log = console.log } = {}) {
   // 都道府県 + 正規化名でグループ化する。50m 以内しか統合しないので県をまたぐことは
@@ -178,6 +193,7 @@ export function unifyCoordsByName(facilities, { radiusM = 50, log = console.log 
   }
 
   let moved = 0;
+  let skipped = 0;
   let clusterCount = 0;
   let multiGroups = 0;
 
@@ -191,6 +207,11 @@ export function unifyCoordsByName(facilities, { radiusM = 50, log = console.log 
       if (!rep || rep.lat == null || rep.lng == null) continue;
       for (const m of cluster) {
         if (m.lat === rep.lat && m.lng === rep.lng) continue;
+        // 代表座標から radiusM を超える行は動かさない（移動距離の上限を radiusM に保つ）
+        if (distanceMeters(rep.lat, rep.lng, m.lat, m.lng) > radiusM) {
+          skipped++;
+          continue;
+        }
         m.lat = rep.lat;
         m.lng = rep.lng;
         moved++;
@@ -200,8 +221,8 @@ export function unifyCoordsByName(facilities, { radiusM = 50, log = console.log 
 
   log(
     `  施設名の名寄せ: ${clusterCount.toLocaleString('en-US')}グループの座標を統一` +
-      `（${moved.toLocaleString('en-US')}件の座標を代表点へ寄せた / 半径 ${radiusM}m）`,
+      `（${moved.toLocaleString('en-US')}件を代表点へ寄せた / 半径 ${radiusM}m 超のため据え置き ${skipped.toLocaleString('en-US')}件）`,
   );
 
-  return { moved, clusters: clusterCount, groups: multiGroups };
+  return { moved, skipped, clusters: clusterCount, groups: multiGroups };
 }
