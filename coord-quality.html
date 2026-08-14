@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>座標の品質 — Japan Food Facilities</title>
+  <meta name="description" content="Japan Food Facilities が配信する緯度経度の精度と、施設の位置として信用できない座標をどう取り除いているかの解説。lat / lng が空になっている行の意味と、地図表示・分析での扱い方。">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="座標の品質 — Japan Food Facilities">
+  <meta property="og:description" content="緯度経度の精度と、信用できない座標の取り除き方。lat / lng が空の行の意味と扱い方。">
+  <meta property="og:url" content="https://gl20percentclub.github.io/japan-food-facilities/coord-quality.html">
+  <meta name="twitter:card" content="summary">
+
+  <style>
+    /* 配色・タイポグラフィは index.html と同一のトークンを使う */
+    :root {
+      --accent: #e8563f;
+      --accent-dark: #c9412c;
+      --ink: #1f2933;
+      --sub: #52606d;
+      --muted: #9aa5b1;
+      --border: rgba(31, 41, 51, 0.12);
+      --panel: #f7f8fa;
+      --bg: #ffffff;
+      --code-bg: #1f2933;
+      --code-ink: #e4e7eb;
+      /* 図の中で「残す座標」を示す色。アクセント（＝落とす側）と区別する */
+      --keep: #3d7f8c;
+    }
+    /* 端末のダークモード設定に追随する（配色だけを差し替える） */
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --ink: #e4e7eb;
+        --sub: #b0b8c0;
+        --muted: #7b8794;
+        --border: rgba(228, 231, 235, 0.16);
+        --panel: #1c2229;
+        --bg: #14181d;
+        --code-bg: #0f1317;
+        --keep: #6fb3c0;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 0 20px; }
+    section { padding: 56px 0; border-top: 1px solid var(--border); }
+    section h2 { font-size: 22px; margin: 0 0 6px; }
+    section .lead { color: var(--sub); font-size: 14.5px; margin: 0 0 28px; }
+    section h3 { font-size: 15.5px; margin: 32px 0 8px; }
+    section p { font-size: 14.5px; margin: 0 0 14px; }
+    section p:last-child { margin-bottom: 0; }
+
+    /* --- ヘッダー --- */
+    .page-head { padding: 56px 0 44px; }
+    .page-head .eyebrow {
+      display: inline-block;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+      background: rgba(232, 86, 63, 0.1);
+      border-radius: 999px;
+      padding: 4px 14px;
+      margin-bottom: 18px;
+    }
+    .page-head h1 { font-size: 34px; line-height: 1.3; margin: 0 0 16px; letter-spacing: -0.01em; }
+    .page-head p { font-size: 16px; color: var(--sub); margin: 0 0 14px; max-width: 680px; }
+    .breadcrumb { font-size: 13px; color: var(--muted); margin: 0 0 24px; }
+    .breadcrumb a { color: var(--sub); }
+
+    /* --- 要点カード --- */
+    .keypoints { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 32px; }
+    .keypoint {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px 20px;
+      background: var(--panel);
+    }
+    .keypoint h3 { font-size: 14.5px; margin: 0 0 6px; }
+    .keypoint p { font-size: 13.5px; color: var(--sub); margin: 0; }
+
+    /* 図の中の色はテーマトークンから取る（ダークモードで調整した値を効かせるため。
+       SVG のプレゼンテーション属性に var() を直接書くのはブラウザ差があるのでクラスにする） */
+    .f-keep { fill: var(--keep); }
+    .f-keep-s { stroke: var(--keep); }
+    .f-drop { fill: var(--accent); }
+    .f-drop-s { stroke: var(--accent); }
+
+    /* --- 図 --- */
+    figure { margin: 24px 0; }
+    .figbox {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 18px;
+      background: var(--bg);
+      overflow-x: auto;
+    }
+    figure svg { display: block; max-width: 100%; height: auto; margin: 0 auto; }
+    figcaption { font-size: 13px; color: var(--sub); margin-top: 10px; }
+
+    /* --- テーブル（index.html の .formats と同じ作り） --- */
+    .formats { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .formats th, .formats td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .formats th { color: var(--muted); font-weight: 600; font-size: 12px; white-space: nowrap; }
+    .formats td.lv { white-space: nowrap; font-weight: 600; }
+    .formats td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .formats tr.drop td.lv { color: var(--accent); }
+    .table-scroll { overflow-x: auto; }
+    .table-note { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+
+    /* --- コード --- */
+    pre {
+      background: var(--code-bg);
+      color: var(--code-ink);
+      border-radius: 10px;
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-size: 12.5px;
+      line-height: 1.7;
+      margin: 0 0 16px;
+    }
+    pre .c { color: #9aa5b1; } /* コメント */
+
+    /* --- 注意書き --- */
+    .notice {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-size: 13.5px;
+      color: var(--sub);
+    }
+    .notice strong { color: var(--ink); }
+    .notice + .notice { margin-top: 12px; }
+
+    /* --- ルールの見出し --- */
+    .rule-head { display: flex; align-items: baseline; gap: 12px; margin: 40px 0 8px; }
+    .rule-head:first-of-type { margin-top: 24px; }
+    .rule-head .badge {
+      flex: none;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      padding: 1px 8px;
+      line-height: 1.6;
+    }
+    .rule-head h3 { margin: 0; font-size: 16px; }
+
+    footer { padding: 40px 0 64px; font-size: 13px; color: var(--sub); text-align: center; }
+    footer a { margin: 0 6px; }
+
+    @media (max-width: 720px) {
+      .page-head { padding: 40px 0 32px; }
+      .page-head h1 { font-size: 25px; }
+      .keypoints { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="page-head">
+    <div class="wrap">
+      <p class="breadcrumb"><a href="./">Japan Food Facilities</a> › 座標の品質</p>
+      <span class="eyebrow">データの読み方</span>
+      <h1>座標の品質</h1>
+      <p>
+        配信している <code>lat</code> / <code>lng</code> は、元データに入っていた座標か、住所からジオコーディングした座標のどちらかです。
+        このページでは、その精度をどう見分けるか、そして<strong>施設の位置として信用できない座標をどう取り除いているか</strong>を説明します。
+      </p>
+      <p>
+        <code>lat</code> / <code>lng</code> が空になっている行があるのは、その多くが意図的な処理の結果です。
+      </p>
+
+      <div class="keypoints">
+        <div class="keypoint">
+          <h3>レコードは消さない</h3>
+          <p>信用できないのは座標だけなので、落とすのも座標だけです。施設名・住所・業種・許可番号はそのまま配信します。</p>
+        </div>
+        <div class="keypoint">
+          <h3>精度は列で分かる</h3>
+          <p><code>geocoding_level</code> を見れば、その座標が建物レベルか町丁目レベルかを判別できます。</p>
+        </div>
+        <div class="keypoint">
+          <h3>地図には影響しない</h3>
+          <p>ベクトルタイルは座標を持つ行だけを載せています。座標を落とした行は地図から自動的に消えます。</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 精度の読み方 ================= -->
+  <section id="level">
+    <div class="wrap">
+      <h2>まず <code>geocoding_level</code> を見る</h2>
+      <p class="lead">
+        座標の精度は <code>geocoding_level</code> 列で判別できます。値が小さいほど位置は大まかです。
+      </p>
+
+      <div class="table-scroll">
+        <table class="formats">
+          <thead>
+            <tr><th>level</th><th>意味</th><th>おおよその誤差</th><th>配信</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="lv">空欄</td>
+              <td>元データに入っていた緯度経度をそのまま使用</td>
+              <td>公開元によるが、多くは建物レベル</td>
+              <td>そのまま配信</td>
+            </tr>
+            <tr>
+              <td class="lv">8</td>
+              <td>街区・地番レベル</td>
+              <td>数十メートル</td>
+              <td>そのまま配信</td>
+            </tr>
+            <tr>
+              <td class="lv">3</td>
+              <td>町丁目の代表点</td>
+              <td>数百メートル</td>
+              <td>そのまま配信</td>
+            </tr>
+            <tr class="drop">
+              <td class="lv">2</td>
+              <td>市区町村の代表点</td>
+              <td>数キロメートル</td>
+              <td>座標を落とす</td>
+            </tr>
+            <tr class="drop">
+              <td class="lv">1</td>
+              <td>都道府県の代表点</td>
+              <td>数十キロメートル</td>
+              <td>座標を落とす</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="table-note">level の値は <a href="https://github.com/geolonia/normalize-japanese-addresses">normalize-japanese-addresses</a> が返す正規化レベルです。</p>
+
+      <figure>
+        <div class="figbox">
+          <svg viewBox="-16 -10 900 268" role="img" aria-label="geocoding_level ごとの位置の誤差を対数目盛で比較した図。level 8 は数十メートル、level 3 は数百メートル、level 2 は数キロメートル、level 1 は数十キロメートル。level 2 と 1 は座標を落とす">
+            <!-- 対数目盛: x = 110 + 187.5 * log10(誤差m / 10) -->
+            <line x1="110" y1="204" x2="860" y2="204" stroke="currentColor" opacity="0.35"/>
+            <g font-size="11" fill="currentColor" opacity="0.55" text-anchor="middle">
+              <line x1="110" y1="199" x2="110" y2="209" stroke="currentColor" opacity="0.35"/><text x="110" y="226">10m</text>
+              <line x1="298" y1="199" x2="298" y2="209" stroke="currentColor" opacity="0.35"/><text x="298" y="226">100m</text>
+              <line x1="485" y1="199" x2="485" y2="209" stroke="currentColor" opacity="0.35"/><text x="485" y="226">1km</text>
+              <line x1="673" y1="199" x2="673" y2="209" stroke="currentColor" opacity="0.35"/><text x="673" y="226">10km</text>
+              <line x1="860" y1="199" x2="860" y2="209" stroke="currentColor" opacity="0.35"/><text x="860" y="226">100km</text>
+            </g>
+            <text x="485" y="248" font-size="11.5" text-anchor="middle" fill="currentColor" opacity="0.5">位置の誤差（対数目盛）</text>
+
+            <!-- level 8: 〜30m -->
+            <text x="0" y="28" font-size="12.5" font-weight="700" fill="currentColor">level 8</text>
+            <text x="0" y="42" font-size="10" fill="currentColor" opacity="0.55">街区・地番</text>
+            <rect x="110" y="20" width="90" height="16" rx="3" class="f-keep" opacity="0.8"/>
+            <text x="210" y="33" font-size="11" fill="currentColor" opacity="0.7">〜数十m　そのまま配信</text>
+
+            <!-- level 3: 〜300m -->
+            <text x="0" y="74" font-size="12.5" font-weight="700" fill="currentColor">level 3</text>
+            <text x="0" y="88" font-size="10" fill="currentColor" opacity="0.55">町丁目</text>
+            <rect x="110" y="66" width="277" height="16" rx="3" class="f-keep" opacity="0.55"/>
+            <text x="397" y="79" font-size="11" fill="currentColor" opacity="0.7">〜数百m　そのまま配信</text>
+
+            <!-- level 2: 〜3km -->
+            <text x="0" y="120" font-size="12.5" font-weight="700" class="f-drop">level 2</text>
+            <text x="0" y="134" font-size="10" fill="currentColor" opacity="0.55">市区町村</text>
+            <rect x="110" y="112" width="465" height="16" rx="3" class="f-drop" opacity="0.45"/>
+            <text x="585" y="125" font-size="11" class="f-drop" font-weight="700">数km　座標を落とす</text>
+
+            <!-- level 1: 〜30km -->
+            <text x="0" y="166" font-size="12.5" font-weight="700" class="f-drop">level 1</text>
+            <text x="0" y="180" font-size="10" fill="currentColor" opacity="0.55">都道府県</text>
+            <rect x="110" y="158" width="652" height="16" rx="3" class="f-drop" opacity="0.28"/>
+            <text x="772" y="171" font-size="11" class="f-drop" font-weight="700">数十km</text>
+          </svg>
+        </div>
+        <figcaption>
+          level 2 と 1 は、<code>prefecture</code> 列・<code>city</code> 列で表せる情報しか持っていません。
+          地図に置くと庁舎の一点に施設が集中し、実在しない密集を作るため、座標を落としています。
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 取り除いている座標 ================= -->
+  <section id="rules">
+    <div class="wrap">
+      <h2>取り除いている座標</h2>
+      <p class="lead">
+        次の3種類の座標を、配信前に取り除いています。いずれもレコードは残し、<code>lat</code> / <code>lng</code> / <code>geocoding_level</code> を空にします。
+      </p>
+
+      <!-- ルール1 -->
+      <div class="rule-head">
+        <span class="badge">1</span>
+        <h3>住所が場所を指していない</h3>
+      </div>
+      <p>
+        移動販売やキッチンカーの住所は「都内一円」「浜松市内一円」のように、営業できる範囲を書いてあるだけで場所を指していません。
+        こうした住所に公開元が座標を付けている場合、その座標は施設の位置ではありません。
+      </p>
+
+      <figure>
+        <div class="figbox">
+          <svg viewBox="-16 -18 892 208" role="img" aria-label="住所が「都内一円」の施設891件が同じ一点に重なっており、座標を空にすることでレコードは残しつつ地図から消える様子を示した図">
+            <defs>
+              <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+              </marker>
+            </defs>
+
+            <text x="0" y="0" font-size="12" font-weight="700" fill="currentColor" opacity="0.6">元データ（東京都・891件）</text>
+            <g font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor">
+              <text x="0" y="28">キッチンカーＡ　　住所: 都内一円</text>
+              <text x="0" y="50">キッチンカーＢ　　住所: 都内一円</text>
+              <text x="0" y="72">移動販売Ｃ　　　　住所: 都内一円</text>
+              <text x="0" y="94" opacity="0.5">…ほか888件　　　　住所: 都内一円</text>
+            </g>
+            <text x="0" y="128" font-size="11.5" fill="currentColor" opacity="0.6">どれも同じ座標が付いている</text>
+
+            <line x1="300" y1="56" x2="352" y2="56" stroke="currentColor" opacity="0.5" marker-end="url(#a1)"/>
+
+            <rect x="374" y="0" width="140" height="132" rx="4" fill="none" stroke="currentColor" opacity="0.25"/>
+            <text x="444" y="-6" font-size="11.5" text-anchor="middle" fill="currentColor" opacity="0.6">地図に置くと</text>
+            <g class="f-drop" opacity="0.4">
+              <circle cx="438" cy="66" r="9"/><circle cx="448" cy="60" r="9"/><circle cx="443" cy="73" r="9"/>
+              <circle cx="451" cy="69" r="9"/><circle cx="435" cy="58" r="9"/>
+            </g>
+            <circle cx="443" cy="65" r="18" fill="none" class="f-drop-s" stroke-width="1.5"/>
+            <text x="444" y="108" font-size="12.5" text-anchor="middle" class="f-drop" font-weight="700">891件が1点に重なる</text>
+            <text x="444" y="124" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">渋谷区内の1点</text>
+
+            <line x1="536" y1="56" x2="588" y2="56" stroke="currentColor" opacity="0.5" marker-end="url(#a1)"/>
+            <text x="562" y="44" font-size="11" text-anchor="middle" fill="currentColor" opacity="0.6">処理後</text>
+
+            <text x="610" y="0" font-size="12" font-weight="700" fill="currentColor" opacity="0.6">配信するレコード</text>
+            <rect x="610" y="8" width="250" height="106" rx="4" fill="none" stroke="currentColor" opacity="0.25"/>
+            <g font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor">
+              <text x="624" y="32">name    キッチンカーＡ</text>
+              <text x="624" y="52">address 都内一円</text>
+              <text x="624" y="72" class="f-drop">lat     （空）</text>
+              <text x="624" y="92" class="f-drop">lng     （空）</text>
+            </g>
+            <text x="610" y="134" font-size="11.5" fill="currentColor" opacity="0.6">施設の情報は残り、地図からは消える</text>
+          </svg>
+        </div>
+        <figcaption>
+          「○○内一円」「○○保健所管内」のように、住所から位置を特定できないレコードが対象です。
+        </figcaption>
+      </figure>
+
+      <!-- ルール2 -->
+      <div class="rule-head">
+        <span class="badge">2</span>
+        <h3>座標が都道府県・市区町村の代表点しか指していない</h3>
+      </div>
+      <p>
+        住所が町名まで解けなかった場合、ジオコーディングは都道府県庁や市役所の位置を返します（<code>geocoding_level</code> が 1 または 2）。
+        これは施設の位置ではなく「その自治体のどこか」を意味するだけなので、座標を落としています。
+        必要な情報は <code>prefecture</code> 列・<code>city</code> 列に残っています。
+      </p>
+
+      <!-- ルール3 -->
+      <div class="rule-head">
+        <span class="badge">3</span>
+        <h3>座標が都道府県の外に落ちている</h3>
+      </div>
+      <p>
+        元データの緯度経度には、桁の取り違えや別の自治体の座標の紛れ込みが混ざっていることがあります。
+        レコードの都道府県と座標の位置が合わないものは、座標を落としています。
+      </p>
+
+      <figure>
+        <div class="figbox">
+          <svg viewBox="-16 -18 892 252" role="img" aria-label="北海道の施設のレコードに大阪府を指す座標が付いている例。行政界と突き合わせて県外と判定し座標を落とす">
+            <defs>
+              <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" class="f-drop"/>
+              </marker>
+            </defs>
+
+            <text x="0" y="0" font-size="12" font-weight="700" fill="currentColor" opacity="0.6">元データのレコード</text>
+            <rect x="0" y="10" width="288" height="100" rx="4" fill="none" stroke="currentColor" opacity="0.25"/>
+            <g font-size="11.5" font-family="ui-monospace, monospace" fill="currentColor">
+              <text x="14" y="34">prefecture 北海道</text>
+              <text x="14" y="54">address    北海道足寄郡足寄町…</text>
+              <text x="14" y="74" class="f-drop">lat        34.664413</text>
+              <text x="14" y="94" class="f-drop">lng        135.781722</text>
+            </g>
+            <text x="0" y="132" font-size="11.5" fill="currentColor" opacity="0.6">住所は北海道なのに、</text>
+            <text x="0" y="150" font-size="11.5" fill="currentColor" opacity="0.6">座標は約1,000km 離れた場所を指す</text>
+
+            <line x1="310" y1="58" x2="392" y2="58" stroke="currentColor" opacity="0.35" stroke-dasharray="3 3"/>
+            <text x="351" y="46" font-size="11" text-anchor="middle" fill="currentColor" opacity="0.6">行政界と照合</text>
+            <text x="351" y="78" font-size="11.5" text-anchor="middle" class="f-drop" font-weight="700">北海道の外</text>
+            <text x="351" y="95" font-size="11.5" text-anchor="middle" class="f-drop" font-weight="700">→ 座標を落とす</text>
+
+            <path d="M614,26 L704,20 L738,54 L714,96 L650,102 L616,72 Z" fill="none" stroke="currentColor" opacity="0.35"/>
+            <text x="676" y="64" font-size="11.5" text-anchor="middle" fill="currentColor" opacity="0.6">北海道</text>
+            <circle cx="662" cy="84" r="4.5" fill="none" stroke="currentColor" opacity="0.45" stroke-dasharray="2 2"/>
+            <text x="662" y="120" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.5">住所が示す位置</text>
+
+            <path d="M452,152 L492,144 L508,178 L492,214 L458,216 L442,182 Z" fill="none" stroke="currentColor" opacity="0.35"/>
+            <text x="474" y="182" font-size="11.5" text-anchor="middle" fill="currentColor" opacity="0.6">大阪府</text>
+            <circle cx="474" cy="198" r="5" class="f-drop"/>
+            <text x="474" y="234" font-size="10.5" text-anchor="middle" class="f-drop">座標が指す位置</text>
+
+            <path d="M654,94 Q560,142 488,192" fill="none" class="f-drop-s" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#a2)"/>
+          </svg>
+        </div>
+        <figcaption>
+          判定には行政区域データを使い、境界付近は約1kmの余裕を持たせています。
+          海沿いや埋立地の施設を誤って落とさないためです。
+        </figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ================= 同一施設の座標の統一 ================= -->
+  <section id="unify">
+    <div class="wrap">
+      <h2>同一施設の座標をそろえている</h2>
+      <p class="lead">
+        同じ施設が複数の公開元に載っている場合や、業種違いの許可レコードとして複数行に分かれている場合、
+        同じ施設に少しずつ違う緯度経度が付くことがあります。
+      </p>
+      <p>
+        施設名を正規化して一致し、かつ <strong>50m以内</strong> にある座標は、1点にそろえています。
+        そろえた先には、そのまとまりの中でもっとも精度の高い座標を使います。
+        片方が公開元の実測座標、もう片方が住所からのジオコーディング結果という組み合わせが典型で、精度の低い側が引き上げられます。
+      </p>
+
+      <figure>
+        <div class="figbox">
+          <svg viewBox="-16 -18 892 190" role="img" aria-label="同じ施設が2つの公開元に載っていて座標が約30mずれている場合、精度の高い元データ座標に合わせて1点にそろえる図">
+            <defs>
+              <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0,0 L10,5 L0,10 z" class="f-keep"/>
+              </marker>
+            </defs>
+
+            <!-- 処理前 -->
+            <text x="0" y="0" font-size="12" font-weight="700" fill="currentColor" opacity="0.6">処理前 — 同じ店に2つの座標</text>
+            <rect x="0" y="14" width="360" height="120" rx="4" fill="none" stroke="currentColor" opacity="0.2"/>
+            <circle cx="120" cy="74" r="6" class="f-keep"/>
+            <text x="120" y="58" font-size="11" text-anchor="middle" class="f-keep" font-weight="700">公開元Ａ</text>
+            <text x="120" y="102" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">実測座標</text>
+            <text x="120" y="118" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">level 空欄</text>
+
+            <circle cx="248" cy="74" r="6" fill="currentColor" opacity="0.45"/>
+            <text x="248" y="58" font-size="11" text-anchor="middle" fill="currentColor" opacity="0.7" font-weight="700">公開元Ｂ</text>
+            <text x="248" y="102" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">住所から推定</text>
+            <text x="248" y="118" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">level 3</text>
+
+            <line x1="126" y1="74" x2="242" y2="74" stroke="currentColor" opacity="0.3" stroke-dasharray="3 3"/>
+            <text x="184" y="70" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.6">約30m</text>
+
+            <line x1="392" y1="74" x2="450" y2="74" stroke="currentColor" opacity="0.5" marker-end="url(#a3)"/>
+            <text x="421" y="62" font-size="11" text-anchor="middle" fill="currentColor" opacity="0.6">統一</text>
+
+            <!-- 処理後 -->
+            <text x="480" y="0" font-size="12" font-weight="700" fill="currentColor" opacity="0.6">処理後 — 精度の高い側にそろえる</text>
+            <rect x="480" y="14" width="360" height="120" rx="4" fill="none" stroke="currentColor" opacity="0.2"/>
+            <circle cx="640" cy="74" r="6" class="f-keep"/>
+            <circle cx="640" cy="74" r="13" fill="none" class="f-keep-s" stroke-width="1.4"/>
+            <text x="640" y="52" font-size="11" text-anchor="middle" class="f-keep" font-weight="700">2件とも同じ座標</text>
+            <text x="640" y="102" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">実測座標を採用</text>
+            <text x="640" y="118" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.55">level 列は各行のまま</text>
+
+            <text x="0" y="162" font-size="11.5" fill="currentColor" opacity="0.6">
+              採用の優先順位: 元データの座標 → level 8（街区・地番） → level 3（町丁目）。同順位なら中央値
+            </text>
+          </svg>
+        </div>
+        <figcaption>
+          座標が動く距離は50m以下に収まります。<code>geocoding_level</code> はそろえた後も書き換えません。
+          その行の住所から解けた精度は変わらないため、この列は精度の下限を表します。
+        </figcaption>
+      </figure>
+
+      <div class="notice">
+        <strong>公開元の座標と一致しない場合があります。</strong>
+        上の統一処理により、配信している座標が元データの値と数十メートル異なることがあります。
+        元データそのままの値が必要な場合は、<a href="./attribution.html">各公開元</a>のデータを直接参照してください。
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 使うときの扱い ================= -->
+  <section id="usage">
+    <div class="wrap">
+      <h2>使うときの扱い</h2>
+      <p class="lead">
+        座標を持たない行が一定数あることを前提に組んでください。地図表示では除外し、集計では市区町村単位に寄せるのが安全です。
+      </p>
+
+      <h3>地図に出す場合</h3>
+      <p>
+        ベクトルタイルを使う場合は何もする必要はありません。座標を持つ行だけが入っています。
+        CSV から自分で描画する場合は、<code>lat</code> / <code>lng</code> が空の行を除外してください。
+        建物単位の精度が必要な用途では <code>geocoding_level</code> も見て、町丁目の代表点（<code>3</code>）を外すかどうかを判断してください。
+      </p>
+
+      <pre><span class="c">-- DuckDB: 建物レベルの座標だけを取り出す</span>
+SELECT name, address, lat, lng, geocoding_level
+FROM read_csv_auto('https://food.japan-facilities.com/api/facilities-all.csv')
+WHERE lat IS NOT NULL
+  <span class="c">-- 空欄（元データの座標）と 8（街区・地番）だけを残す</span>
+  AND (geocoding_level IS NULL OR geocoding_level = 8);</pre>
+
+      <h3>件数を数える場合</h3>
+      <p>
+        座標の有無で絞ると件数が減ります。市区町村ごとの施設数のような集計では、座標ではなく
+        <code>prefecture</code> 列・<code>city</code> 列を使ってください。これらは座標を落とした行にも入っています。
+      </p>
+
+      <pre><span class="c">-- 市区町村ごとの件数（座標の有無に影響されない）</span>
+SELECT prefecture, city, COUNT(*) AS n
+FROM read_csv_auto('https://food.japan-facilities.com/api/facilities-all.csv')
+GROUP BY prefecture, city
+ORDER BY n DESC;</pre>
+
+      <div class="notice">
+        <strong>1レコード＝1つの営業許可です。</strong>
+        同じ施設が業種違いで複数レコードになる場合があります。ユニークな施設数を数えたい場合は、
+        施設名と座標の組み合わせで重複を除いてください。
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 関連 ================= -->
+  <section id="related">
+    <div class="wrap">
+      <h2>関連ドキュメント</h2>
+      <p class="lead">データ全体の仕様、収録範囲、出典は次のドキュメントにまとまっています。</p>
+      <div class="table-scroll">
+        <table class="formats">
+          <tbody>
+            <tr>
+              <td class="lv"><a href="https://github.com/gl20percentclub/japan-food-facilities/blob/main/docs/DATA.md">データの詳細</a></td>
+              <td>収集元、市区町村名の正規化、収録範囲、鮮度と網羅性、更新頻度</td>
+            </tr>
+            <tr>
+              <td class="lv"><a href="https://github.com/gl20percentclub/japan-food-facilities/blob/main/docs/COVERAGE.md">収録状況一覧</a></td>
+              <td>自治体ごとの収録件数と取得元</td>
+            </tr>
+            <tr>
+              <td class="lv"><a href="./attribution.html">出典・ライセンス</a></td>
+              <td>公開元ごとのライセンスと出典表示文</td>
+            </tr>
+            <tr>
+              <td class="lv"><a href="./map.html">地図で見る</a></td>
+              <td>配信中のベクトルタイルをそのまま表示したプレビュー</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="wrap">
+      <p>
+        <a href="./">トップ</a> ·
+        <a href="./map.html">地図</a> ·
+        <a href="./attribution.html">出典・ライセンス</a> ·
+        <a href="https://github.com/gl20percentclub/japan-food-facilities">GitHub</a>
+      </p>
+    </div>
+  </footer>
+
+</body>
+</html>

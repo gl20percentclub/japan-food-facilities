@@ -202,7 +202,7 @@
         <div class="card">
           <span class="ico">📍</span>
           <h3>緯度経度つき</h3>
-          <p>座標が無い元データも normalize-japanese-addresses でジオコーディングして補完。精度レベルも一緒に返します。</p>
+          <p>座標が無い元データも normalize-japanese-addresses でジオコーディングして補完。<a href="./coord-quality.html">精度レベル</a>も一緒に返します。</p>
         </div>
         <div class="card">
           <span class="ico">🧹</span>
@@ -310,6 +310,7 @@ print(naha[['name', 'address', 'lat', 'lng']].head())</code></pre>
         地域や業種を絞りたい場合は、CSV をダウンロードしてフィルタしてください。
         各列の詳細は <a href="https://github.com/gl20percentclub/japan-food-facilities#どんなデータか">README</a>、
         自治体ごとの収録状況は <a href="https://github.com/gl20percentclub/japan-food-facilities/blob/main/docs/COVERAGE.md">収録状況一覧</a> を参照してください。
+        <code>lat</code> / <code>lng</code> が空の行がある理由と緯度経度の精度は、<a href="./coord-quality.html">座標の品質</a>にまとめています。
       </p>
     </div>
   </section>
@@ -386,6 +387,7 @@ print(naha[['name', 'address', 'lat', 'lng']].head())</code></pre>
     <div class="wrap">
       <p>
         <a href="./map.html">地図</a> ·
+        <a href="./coord-quality.html">座標の品質</a> ·
         <a href="./attribution.html">出典・ライセンス</a> ·
         <a href="#availability">提供条件</a> ·
         <a href="https://github.com/gl20percentclub/japan-food-facilities">GitHub</a> ·
