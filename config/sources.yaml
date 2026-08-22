@@ -203,8 +203,9 @@ sources:
     license: CC BY 4.0
   - key: osaka-city
     acquire:
-      type: get
-      url: https://www.city.osaka.lg.jp/contents/wdu280/260331zenku.csv
+      type: resolve
+      pageUrl: https://www.city.osaka.lg.jp/kenko/page/0000575579.html
+      linkPattern: 食品営業許可施設一覧
       format: csv
       encoding: shift_jis
     source: 大阪市食品営業許可施設一覧
@@ -463,8 +464,9 @@ sources:
     defaultCity: 青森市
   - key: morioka
     acquire:
-      type: get
-      url: https://www.city.morioka.iwate.jp/_res/projects/default_project/_page_/001/006/689/20260630.csv
+      type: resolve
+      pageUrl: https://www.city.morioka.iwate.jp/kenkou/hokenjo/shokuhineisei/1017014/1006689.html
+      linkPattern: 食品営業許可施設一覧
       format: csv
       encoding: utf-8
     source: 盛岡市食品営業許可施設一覧
@@ -496,8 +498,9 @@ sources:
     defaultCity: 山形市
   - key: fukushima-pref
     acquire:
-      type: get
-      url: https://www.pref.fukushima.lg.jp/uploaded/attachment/743308.xlsx
+      type: resolve
+      pageUrl: https://www.pref.fukushima.lg.jp/sec/21045e/shisetujouhou.html
+      linkPattern: 年度末時点
       format: xlsx
     source: 福島県食品営業許可施設一覧
     sourceUrl: https://www.pref.fukushima.lg.jp/sec/21045e/shisetujouhou.html
@@ -537,8 +540,9 @@ sources:
     defaultCity: 宇都宮市
   - key: takasaki
     acquire:
-      type: get
-      url: https://www.city.takasaki.gunma.jp/uploaded/attachment/40475.xlsx
+      type: resolve
+      pageUrl: https://www.city.takasaki.gunma.jp/page/4527.html
+      linkPattern: '許可施設一覧（.+現在）'
       format: xlsx
     source: 高崎市食品営業許可施設一覧
     sourceUrl: https://www.city.takasaki.gunma.jp/page/4527.html
@@ -547,8 +551,9 @@ sources:
     defaultCity: 高崎市
   - key: kawaguchi
     acquire:
-      type: get
-      url: https://www.city.kawaguchi.lg.jp/material/files/group/232/R0803zenshisetsuichiran.xls
+      type: resolve
+      pageUrl: https://www.city.kawaguchi.lg.jp/soshiki/01090/027/shokuhin/oshirasetop/shisetsuichiran/index.html
+      linkPattern: '^食品営業施設一覧'
       format: xls
     source: 川口市食品衛生営業許可施設一覧
     sourceUrl: https://www.city.kawaguchi.lg.jp/soshiki/01090/027/shokuhin/oshirasetop/shisetsuichiran/index.html
@@ -557,8 +562,9 @@ sources:
     defaultCity: 川口市
   - key: chuo-ku
     acquire:
-      type: get
-      url: https://www.city.chuo.lg.jp/documents/984/syokuhineigyoukyoka.csv
+      type: resolve
+      pageUrl: https://www.city.chuo.lg.jp/kusei/gaiyou/toukeidate/opendata.html
+      linkPattern: 食品等営業許可・届出一覧
       format: csv
       encoding: shift_jis
     source: 東京都中央区食品等営業許可・届出一覧
@@ -579,8 +585,9 @@ sources:
     defaultCity: 新宿区
   - key: taito-ku
     acquire:
-      type: get
-      url: https://www.city.taito.lg.jp/kenkohukusi/kenkokikikanrieisei/food/syokuhin-sisetu/index.files/2026ALL-IND-CSV.csv
+      type: resolve
+      pageUrl: https://www.city.taito.lg.jp/kenkohukusi/kenkokikikanrieisei/food/syokuhin-sisetu/index.html
+      hrefPattern: '2026ALL-IND-CSV\.csv$'
       format: csv
       encoding: shift_jis
     source: 東京都台東区食品衛生営業施設一覧
@@ -601,8 +608,9 @@ sources:
     defaultCity: 江東区
   - key: shinagawa-ku
     acquire:
-      type: get
-      url: https://www.city.shinagawa.tokyo.jp/contentshozon2026/R6-7.csv
+      type: resolve
+      pageUrl: https://www.city.shinagawa.tokyo.jp/PC/kenkou/kenkou-eisei/kenkou-eisei-syokuhin/opendate.html
+      linkPattern: '年度\s*許可施設一覧'
       format: csv
       encoding: shift_jis
     source: 東京都品川区食品衛生許可施設
@@ -623,8 +631,9 @@ sources:
     defaultCity: 中野区
   - key: setagaya-ku
     acquire:
-      type: get
-      url: https://www.city.setagaya.lg.jp/documents/3246/zenkenr080331.csv
+      type: resolve
+      pageUrl: https://www.city.setagaya.lg.jp/02245/online_tetsuzuki/3246.html
+      linkPattern: '^全件許可施設一覧'
       format: csv
       encoding: shift_jis
     source: 東京都世田谷区食品衛生営業許可施設
@@ -735,8 +744,9 @@ sources:
     defaultCity: 福井市
   - key: yamanashi-pref
     acquire:
-      type: get
-      url: https://www.pref.yamanashi.jp/documents/23776/190004_food_business_all.csv
+      type: resolve
+      pageUrl: https://www.pref.yamanashi.jp/eisei-ykm/itiranhyou1.html
+      linkPattern: 営業許可施設一覧（オープンデータ）
       format: csv
       encoding: shift_jis
     source: 山梨県営業許可施設一覧
@@ -745,8 +755,9 @@ sources:
     defaultPref: 山梨県
   - key: nagano-city
     acquire:
-      type: get
-      url: https://www.city.nagano.nagano.jp/documents/1948/202011_food_business_202605.csv
+      type: resolve
+      pageUrl: https://www.city.nagano.nagano.jp/n023500/contents/p004876.html
+      linkPattern: 営業許可施設（食品営業）
       format: csv
       encoding: utf-8
     source: 長野市食品営業許可施設
@@ -789,8 +800,10 @@ sources:
     defaultCity: 岐阜市
   - key: hamamatsu
     acquire:
-      type: get
-      url: https://static.hamamatsu.odpf.net/opendata/v01/syokuhineiseidaityou202401/syokuhineiseidaityou202401.csv
+      type: resolve
+      pageUrl: https://opendata.pref.shizuoka.jp/dataset/11921.html
+      hrefScan: true
+      hrefPattern: 'https://static\.hamamatsu\.odpf\.net/opendata/v01/syokuhineiseidaityou\d{6}/syokuhineiseidaityou\d{6}\.csv'
       format: csv
       encoding: shift_jis
     source: 浜松市食品衛生台帳（新規）
@@ -811,8 +824,9 @@ sources:
     defaultPref: 愛知県
   - key: ichinomiya
     acquire:
-      type: get
-      url: https://www.city.ichinomiya.aichi.jp/_res/projects/default_project/_page_/001/040/636/232033_Food_Business_All_20260331.csv
+      type: resolve
+      pageUrl: https://www.city.ichinomiya.aichi.jp/hokenjo/hoken-eisei/1044314/1039899/1040636.html
+      linkPattern: 食品営業許可台帳（.+時点）
       format: csv
       encoding: auto
     source: 一宮市食品営業許可台帳
@@ -822,8 +836,9 @@ sources:
     defaultCity: 一宮市
   - key: otsu
     acquire:
-      type: get
-      url: https://www.city.otsu.lg.jp/material/files/group/4/od_2605.csv
+      type: resolve
+      pageUrl: https://www.city.otsu.lg.jp/soshiki/021/1441/od/02594.html
+      linkPattern: 食品営業許可施設一覧（.+月末時点）
       format: csv
       encoding: utf-8
     source: 大津市食品営業許可施設一覧
@@ -833,8 +848,9 @@ sources:
     defaultCity: 大津市
   - key: hirakata
     acquire:
-      type: get
-      url: https://www.city.hirakata.osaka.jp/cmsfiles/contents/0000023/23479/272108_food_business_all_202603_end.csv
+      type: resolve
+      pageUrl: https://www.city.hirakata.osaka.jp/0000023479.html
+      linkPattern: 全ての許可施設
       format: csv
       encoding: shift_jis
     source: 枚方市食品等営業許可施設一覧
@@ -844,8 +860,9 @@ sources:
     defaultCity: 枚方市
   - key: suita
     acquire:
-      type: get
-      url: https://www.city.suita.osaka.jp/_res/projects/default_project/_page_/001/017/170/20260331new.xlsx
+      type: resolve
+      pageUrl: https://www.city.suita.osaka.jp/home/soshiki/div-kenkoiryo/eiseikanri/opendata.html
+      linkPattern: 食品営業許可施設一覧（令和\d+年\d+月\d+日時点）（改正後
       format: xlsx
     source: 吹田市食品営業許可施設一覧
     sourceUrl: https://www.city.suita.osaka.jp/home/soshiki/div-kenkoiryo/eiseikanri/opendata.html
@@ -892,8 +909,9 @@ sources:
     defaultCity: 西宮市
   - key: nara-city
     acquire:
-      type: get
-      url: https://www.city.nara.lg.jp/uploaded/attachment/203480.csv
+      type: resolve
+      pageUrl: https://www.city.nara.lg.jp/soshiki/97/10411.html
+      linkPattern: オープンデータ
       format: csv
       encoding: utf-8
     source: 奈良市食品営業許可施設
@@ -958,8 +976,9 @@ sources:
     defaultPref: 徳島県
   - key: takamatsu
     acquire:
-      type: get
-      url: https://opendata.takamatsu-fact.com/licensed_food_business_facility_list/data.csv
+      type: resolve
+      pageUrl: https://opendata.smartcity-takamatsu.jp/ckan/dataset/licensed_food_business_facility_list
+      linkPattern: ダウンロード
       format: csv
       encoding: utf-8
     source: 高松市食品等営業許可施設一覧
@@ -970,10 +989,10 @@ sources:
     defaultCity: 高松市
   - key: matsuyama
     acquire:
-      type: get
-      urls:
-        - https://www.city.matsuyama.ehime.jp/shisei/opendata/metadata/shokuhin.files/382019_food_business_all_2026031.csv
-        - https://www.city.matsuyama.ehime.jp/shisei/opendata/metadata/shokuhin.files/382019_food_business_all_2026032.csv
+      type: resolve
+      pageUrl: https://www.city.matsuyama.ehime.jp/shisei/opendata/metadata/shokuhin.html
+      hrefPattern: '382019_food_business_all_\d+\.csv$'
+      multi: true
       format: csv
       encoding: utf-8
     source: 松山市食品営業許可全施設一覧
@@ -995,10 +1014,10 @@ sources:
     defaultCity: 熊本市
   - key: oita-city
     acquire:
-      type: get
-      urls:
-        - https://www.city.oita.oita.jp/o095/kenko/hoken/documents/r080601allkyoka.csv
-        - https://www.city.oita.oita.jp/o095/kenko/hoken/documents/r080601alltodoke.csv
+      type: resolve
+      pageUrl: https://www.city.oita.oita.jp/o095/kenko/hoken/20220908.html
+      hrefPattern: 'r080601all(?:kyoka|todoke)\.csv$'
+      multi: true
       format: csv
       encoding: auto
     source: 大分市食品営業許可・届出施設一覧
