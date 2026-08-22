@@ -48,11 +48,33 @@ import { buildPrefectureCsvs } from './build/prefecture-csv.js';
 import { generateTiles } from './build/tiles.js';
 import { generateReadmeStats } from './generate/readme-stats.js';
 import { generateLlmsFiles } from './generate/llms.js';
+import { buildSourceSummary, detectProblems, shouldPersistSummary, summaryToMap } from './lib/crawl-summary.js';
+import { buildSlackMessage, sendSlackNotification } from './lib/notify-slack.js';
 
 const CACHE_DIR = path.join(ROOT, '.cache');
 const API_DIR = path.join(ROOT, 'api');
 const CSV_PATH = path.join(API_DIR, 'facilities-all.csv');
 const PREF_CSV_DIR = path.join(API_DIR, 'prefectures');
+// 前回クロールのソース別件数（前回結果との比較用）。本番クロール（Fargate）は
+// .cache を S3 と同期しているため、ここに保存すれば週をまたいで比較できる。
+const SUMMARY_PATH = path.join(CACHE_DIR, 'crawl-summary.json');
+
+// 前回のクロールサマリを読み込む。無い（初回実行）・壊れている場合は null
+// （detectProblems は previousByKey が null なら drop 判定をスキップする）。
+function loadPreviousSummary(summaryPath = SUMMARY_PATH) {
+  try {
+    const json = JSON.parse(fs.readFileSync(summaryPath, 'utf-8'));
+    return summaryToMap(json.sources || []);
+  } catch {
+    return null;
+  }
+}
+
+// 今回のクロールサマリを次回比較用に保存する。
+function saveSummary(summary, summaryPath = SUMMARY_PATH) {
+  fs.mkdirSync(path.dirname(summaryPath), { recursive: true });
+  fs.writeFileSync(summaryPath, JSON.stringify({ updatedAt: new Date().toISOString(), sources: summary }, null, 2));
+}
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const NO_GEOCODE = process.argv.includes('--no-geocode');
@@ -123,6 +145,7 @@ async function main() {
   console.log(`対象ソース: ${sources.length}件${ONLY ? `（--only=${[...ONLY].join(',')}）` : ''}\n`);
 
   const keptBySource = new Map(); // source.key -> 取り込めた施設数
+  const errorBySource = new Map(); // source.key -> 例外メッセージ（Slack通知用。成功時は未登録）
   // ソースごとの取り込み結果。facilities への結合はソース定義順で行い、
   // 並列実行でも出力（CSV の行順・重複除去の勝ち負け）を決定的に保つ。
   const resultBySource = new Map(); // source.key -> facility[]
@@ -158,6 +181,7 @@ async function main() {
       lines.push(`  有効施設: ${kept}件`);
     } catch (err) {
       lines.push(`  ⚠ ${source.key} をスキップ: ${err.message}`);
+      errorBySource.set(source.key, err.message);
     }
     console.log(lines.join('\n'));
     keptBySource.set(source.key, kept);
@@ -186,6 +210,23 @@ async function main() {
   }
 
   console.log(`\n有効な施設: 合計 ${facilities.length}件`);
+
+  // クロール結果のサマリを集計し、問題（0件・エラー・前回比の大幅減）があれば Slack に通知する。
+  // --allow-empty-sources が本番で既定有効のため、下の emptySources チェックは実質
+  // 素通りする（warning ログが残るだけ）。ここが「壊れても人に気づかせる」唯一の経路になる。
+  const summary = buildSourceSummary(sources, keptBySource, errorBySource);
+  const previousByKey = loadPreviousSummary();
+  const problems = detectProblems(summary, previousByKey);
+  if (problems.length > 0) {
+    console.log(`\n⚠ 問題を検知: ${problems.length}件（Slack通知を試行）`);
+    const message = buildSlackMessage(problems, { totalSources: sources.length, updatedAt: new Date().toISOString() });
+    const result = await sendSlackNotification(message);
+    if (result.skipped) console.log('  Slack通知: SLACK_WEBHOOK_URL 未設定のためスキップ');
+    else if (result.ok) console.log('  Slack通知: 送信しました');
+    else console.warn(`  ⚠ Slack通知に失敗（クロールは続行）: ${result.error || result.status}`);
+  }
+  // --dry-run / --only は本番の実測件数ではないため、次回比較の基準を汚さないよう保存しない。
+  if (shouldPersistSummary({ dryRun: DRY_RUN, only: ONLY })) saveSummary(summary);
 
   // 施設を1件も取り込めなかったソースがあれば失敗させ、api/ を書き換えない。
   // 取得失敗が黙って欠落データに化けるのを防ぐ。--allow-empty-sources で無効化。
