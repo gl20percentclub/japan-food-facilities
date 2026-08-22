@@ -214,10 +214,9 @@ sources:
     defaultCity: 大阪市
   - key: tokyo-minato
     acquire:
-      type: get
-      url: https://opendata.city.minato.tokyo.jp/dataset/54d8c582-00e2-4730-a23f-4a5befec9ae5/resource/c9d0299e-8e05-4317-877f-83055709e41f/download/food_business_all.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://opendata.city.minato.tokyo.jp
+      resourceId: c9d0299e-8e05-4317-877f-83055709e41f
     source: 東京都港区食品営業許可一覧
     sourceUrl: https://opendata.city.minato.tokyo.jp/dataset/54d8c582-00e2-4730-a23f-4a5befec9ae5
     license: CC BY 4.0
@@ -443,10 +442,9 @@ sources:
     license: Creative Commons Attribution 4.0 International
   - key: sapporo
     acquire:
-      type: get
-      url: https://ckan.pf-sapporo.jp/dataset/be44af14-f135-41b9-acca-08e215d8a540/resource/54618ac4-da90-493c-8a20-8df29be9d435/download/shokuhin260331.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://ckan.pf-sapporo.jp
+      resourceId: 54618ac4-da90-493c-8a20-8df29be9d435
     source: 札幌市食品営業許可施設一覧
     sourceUrl: https://ckan.pf-sapporo.jp/dataset/be44af14-f135-41b9-acca-08e215d8a540
     license: CC BY 4.0
@@ -529,10 +527,9 @@ sources:
     defaultCity: いわき市
   - key: utsunomiya
     acquire:
-      type: get
-      url: https://catalog.city.utsunomiya.tochigi.jp/dataset/4b5cae93-4640-4b4e-87bb-a5e18042366c/resource/a53500f2-7ba1-4e77-a906-e17dc5b60714/download/092011_seikatsueisei_shokuhin_shokuhin.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://catalog.city.utsunomiya.tochigi.jp
+      resourceId: a53500f2-7ba1-4e77-a906-e17dc5b60714
     source: 宇都宮市食品営業許可施設一覧
     sourceUrl: https://catalog.city.utsunomiya.tochigi.jp/dataset/4b5cae93-4640-4b4e-87bb-a5e18042366c
     license: CC BY 4.0
@@ -692,9 +689,9 @@ sources:
     defaultPref: 富山県
   - key: toyama-city
     acquire:
-      type: get
-      url: https://opdt.city.toyama.lg.jp/dataset/fb1198c6-3ac2-42fc-ae99-81ea5ba09a2d/resource/fa38003f-accd-4690-b71b-96b1d78e1c45/download/syokuhin.xlsx
-      format: xlsx
+      type: ckan
+      ckanBase: https://opdt.city.toyama.lg.jp
+      resourceId: fa38003f-accd-4690-b71b-96b1d78e1c45
     source: 富山市食品営業許可施設
     sourceUrl: https://opdt.city.toyama.lg.jp/dataset/fb1198c6-3ac2-42fc-ae99-81ea5ba09a2d
     # 富山市オープンデータ利用規約（https://opdt.city.toyama.lg.jp/pages/terms）が表示4.0国際を指定
@@ -773,20 +770,18 @@ sources:
     defaultCity: 松本市
   - key: gifu-pref
     acquire:
-      type: get
-      url: https://gifu-opendata.pref.gifu.lg.jp/dataset/f6bbdb66-1d55-4e55-82cb-15fe1bb24223/resource/3c7d862d-a126-4441-a5b1-4839096b2591/download/20250331syokuhin.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://gifu-opendata.pref.gifu.lg.jp
+      resourceId: 3c7d862d-a126-4441-a5b1-4839096b2591
     source: 岐阜県食品営業許可施設情報
     sourceUrl: https://gifu-opendata.pref.gifu.lg.jp/dataset/f6bbdb66-1d55-4e55-82cb-15fe1bb24223
     license: CC BY 2.0
     defaultPref: 岐阜県
   - key: gifu-city
     acquire:
-      type: get
-      url: https://gifu-opendata.pref.gifu.lg.jp/dataset/2f9f1b1c-be25-4a27-96c6-47b597f1a0bd/resource/16ef7794-d2b6-4d7d-8353-f55193432530/download/gifushisyokuhinkyokar7.6.1.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://gifu-opendata.pref.gifu.lg.jp
+      resourceId: 16ef7794-d2b6-4d7d-8353-f55193432530
     source: 岐阜市食品等営業許可一覧
     sourceUrl: https://gifu-opendata.pref.gifu.lg.jp/dataset/2f9f1b1c-be25-4a27-96c6-47b597f1a0bd
     license: CC BY 2.0
@@ -920,10 +915,9 @@ sources:
     defaultCity: 鳥取市
   - key: fukuyama
     acquire:
-      type: get
-      url: https://data.city.fukuyama.hiroshima.jp/dataset/61f415c5-88f7-46d0-8ada-4bb8855685a0/resource/21fec913-dc08-4344-94d1-ffb0068ab147/download/2026_3all.csv
-      format: csv
-      encoding: auto
+      type: ckan
+      ckanBase: https://data.city.fukuyama.hiroshima.jp
+      resourceId: 21fec913-dc08-4344-94d1-ffb0068ab147
     source: 福山市営業許認可等施設一覧
     sourceUrl: https://data.city.fukuyama.hiroshima.jp/dataset/61f415c5-88f7-46d0-8ada-4bb8855685a0
     # 福山市オープンデータカタログサイト利用規約（https://data.city.fukuyama.hiroshima.jp/terms）が PDL1.0 を適用
@@ -932,10 +926,9 @@ sources:
     defaultCity: 福山市
   - key: yamaguchi-pref
     acquire:
-      type: get
-      url: https://yamaguchi-opendata.jp/ckan/dataset/9d0d2325-62b4-447c-8817-a381c968a5cd/resource/44efb857-48c7-4a2e-9e99-61bf38f6f125/download/350001_food_business_all.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://yamaguchi-opendata.jp/ckan
+      resourceId: 44efb857-48c7-4a2e-9e99-61bf38f6f125
     source: 山口県食品営業許可施設情報一覧
     sourceUrl: https://yamaguchi-opendata.jp/ckan/dataset/9d0d2325-62b4-447c-8817-a381c968a5cd
     # 山口県オープンデータカタログサイト利用規約（https://yamaguchi-opendata.jp/www/terms.html）が CC BY 4.0 での利用を許諾
@@ -943,10 +936,9 @@ sources:
     defaultPref: 山口県
   - key: shimonoseki
     acquire:
-      type: get
-      url: https://yamaguchi-opendata.jp/ckan/dataset/50c21bfa-4ee1-4553-b166-8ed2e625a6f5/resource/f61a61f9-a9ca-448f-8e48-38f647fd2539/download/352012_food_business_map.csv
-      format: csv
-      encoding: utf-8
+      type: ckan
+      ckanBase: https://yamaguchi-opendata.jp/ckan
+      resourceId: f61a61f9-a9ca-448f-8e48-38f647fd2539
     source: 下関市食品営業許可施設一覧（マップ用）
     sourceUrl: https://yamaguchi-opendata.jp/ckan/dataset/50c21bfa-4ee1-4553-b166-8ed2e625a6f5
     # 山口県オープンデータカタログサイト利用規約（https://yamaguchi-opendata.jp/www/terms.html）が CC BY 4.0 での利用を許諾
@@ -1016,10 +1008,9 @@ sources:
     defaultCity: 大分市
   - key: sagamihara
     acquire:
-      type: get
-      url: https://opendata.city.sagamihara.kanagawa.jp/dataset/eigyo_kyoka/resource/1be0eb65-0348-4668-a440-0ce10cad1063/download/04.zip
-      format: zip
-      encoding: auto
+      type: ckan
+      ckanBase: https://opendata.city.sagamihara.kanagawa.jp
+      resourceId: 1be0eb65-0348-4668-a440-0ce10cad1063
     source: 相模原市食品衛生関係施設一覧（営業許可）
     sourceUrl: https://opendata.city.sagamihara.kanagawa.jp/dataset/eigyo_kyoka
     license: CC BY 4.0
