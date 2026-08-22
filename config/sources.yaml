@@ -574,9 +574,9 @@ sources:
     defaultCity: 中央区
   - key: shinjuku-ku
     acquire:
-      type: get
-      url: https://www.city.shinjuku.lg.jp/content/000399975.csv
-      format: csv
+      type: ckan
+      ckanBase: https://catalog.data.metro.tokyo.lg.jp
+      resourceId: 2f89768e-56e2-4932-a416-92fdfa47024d
       encoding: utf-16
     source: 東京都新宿区食品等営業許可・届出一覧
     sourceUrl: https://catalog.data.metro.tokyo.lg.jp/dataset/t131041d0000000124
@@ -597,9 +597,9 @@ sources:
     defaultCity: 台東区
   - key: koto-ku
     acquire:
-      type: get
-      url: https://www.opendata.metro.tokyo.lg.jp/koto/131083_015_food_business_all.csv
-      format: csv
+      type: ckan
+      ckanBase: https://catalog.data.metro.tokyo.lg.jp
+      resourceId: 2235418f-2d52-4d0c-88f7-4c3dd171de47
       encoding: utf-8
     source: 東京都江東区食品等営業許可・届出一覧
     sourceUrl: https://catalog.data.metro.tokyo.lg.jp/dataset/t131083d0000000028
@@ -620,9 +620,9 @@ sources:
     defaultCity: 品川区
   - key: nakano-ku
     acquire:
-      type: get
-      url: https://www2.wagmap.jp/nakanodatamap/nakanodatamap/opendatafile/map_40/CSV/opendata_550150.csv
-      format: csv
+      type: ckan
+      ckanBase: https://catalog.data.metro.tokyo.lg.jp
+      resourceId: 502937e9-2dc2-4b1d-baf6-bd53300da4f1
       encoding: utf-8
     source: 東京都中野区食品等営業許可届出一覧
     sourceUrl: https://catalog.data.metro.tokyo.lg.jp/dataset/t131148d0000000129
@@ -654,9 +654,9 @@ sources:
     defaultCity: 渋谷区
   - key: higashimurayama
     acquire:
-      type: get
-      url: https://www.opendata.metro.tokyo.lg.jp/higashimurayama/20240619_food_business_all.csv
-      format: csv
+      type: ckan
+      ckanBase: https://catalog.data.metro.tokyo.lg.jp
+      resourceId: 0e0b6e43-195f-4bb0-8687-9de73e613587
       encoding: utf-8
     source: 東京都東村山市食品等営業許可・届出一覧
     sourceUrl: https://catalog.data.metro.tokyo.lg.jp/dataset/t132136d3100000018
@@ -687,13 +687,14 @@ sources:
     defaultCity: 茅ヶ崎市
   - key: toyama-pref
     acquire:
-      type: get
-      url: https://toyama-pref.box.com/shared/static/1t6074lluawpua1u5jhx1yeaynb48rle.csv
-      format: csv
+      type: ckan
+      ckanBase: https://ckan.tdcp.pref.toyama.jp
+      resourceId: 21090a50-6e47-4edb-8405-f2507b7f2738
       encoding: shift_jis
     source: 富山県食品営業許可施設一覧
-    # 旧ポータル閉鎖（2026-05-29）に伴い富山データ連携基盤へ移転。CKAN の license_id は cc-zero
-    sourceUrl: https://ckan-front.tdcp.pref.toyama.jp/dataset/syokuhin
+    # 旧ポータル閉鎖（2026-05-29）に伴い富山データ連携基盤へ移転。CKAN の license_id は cc-zero。
+    # sourceUrl はポータルのランディングページ（ckan-front）ではなく、実CKAN本体（ckan.）のデータセットページ
+    sourceUrl: https://ckan.tdcp.pref.toyama.jp/dataset/syokuhin
     license: CC0 1.0
     defaultPref: 富山県
   - key: toyama-city
@@ -921,8 +922,9 @@ sources:
     defaultCity: 奈良市
   - key: tottori-city
     acquire:
-      type: get
-      url: https://odp-pref-tottori.tori-info.co.jp/dataset/1858/resource/9560/312011_food_business_all.csv
+      type: resolve
+      pageUrl: https://odp-pref-tottori.tori-info.co.jp/dataset/1858.html
+      hrefPattern: '312011_food_business_all\.csv$'
       format: csv
       encoding: utf-8
     source: 鳥取市食品等営業許可・届出一覧
@@ -965,8 +967,9 @@ sources:
     defaultCity: 下関市
   - key: tokushima-pref
     acquire:
-      type: get
-      url: https://opendata.pref.tokushima.lg.jp/dataset/4615/resource/14084/36000_food_business_all.csv
+      type: resolve
+      pageUrl: https://opendata.pref.tokushima.lg.jp/dataset/4615.html
+      hrefPattern: '36000_food_business_all\.csv$'
       format: csv
       encoding: utf-8
     source: 徳島県食品等営業許可・届出一覧
@@ -1003,8 +1006,12 @@ sources:
     defaultCity: 松山市
   - key: kumamoto-city
     acquire:
-      type: get
-      url: https://www.city.kumamoto.jp/dynamic/opendata/pub/Insyokutenneigyoukyoka.csv
+      type: resolve
+      pageUrl: https://www.city.kumamoto.jp/dynamic/opendata/pub/detail.aspx?c_id=38&id=60
+      # このページの <a> は href='...' の単一引用符（resolveLinkFromHtml の二重引用符専用の抽出は非対応）。
+      # hrefScan は <a> をパースせず生HTML中を正規表現で走査するため、引用符の種類に依存せず解決できる。
+      hrefScan: true
+      hrefPattern: 'Insyokutenneigyoukyoka\.csv'
       format: csv
       encoding: utf-8
     source: 熊本市飲食店営業許可施設一覧
@@ -1037,9 +1044,10 @@ sources:
     defaultCity: 相模原市
   - key: tokyo-hokeniryo
     acquire:
-      type: get
-      url: https://www.hokeniryo.metro.tokyo.lg.jp/documents/d/hokeniryo/shokuhin-kyoka-4
-      format: csv
+      type: resolve
+      pageUrl: https://www.hokeniryo.metro.tokyo.lg.jp/kenkou/hokenjo_daicho/shokuhineigyokyokadaicho
+      # href に拡張子が無い（Liferayの整形URL）ため format/linkFormat は指定せず、文言のみで一意に絞り込む
+      linkPattern: '食品関係営業台帳（許可）（CSV'
       encoding: shift_jis
     source: 東京都（保健医療局）食品関係営業許可台帳
     sourceUrl: https://www.hokeniryo.metro.tokyo.lg.jp/kenkou/hokenjo_daicho/shokuhineigyokyokadaicho
