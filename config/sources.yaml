@@ -11,6 +11,11 @@
 #   key            一意キー（キャッシュ名・--only 指定に使用）
 #   acquire        取得方法:
 #     { type: ckan, ckanBase, resourceId }        CKAN resource_show でURL解決
+#         resourceId は単一文字列でも配列でもよい（配列なら1エントリで複数リソースを結合して取得。
+#           例: 福井県は776/777の2 resourceId を1ソースにまとめている）
+#         result.url が空で datastore_active:true のリソース（filestoreに実体が無く CKAN の
+#           datastore テーブルにしかデータが無いもの）は `<ckanBase>/datastore/dump/<resourceId>`
+#           に自動でフォールバックする（例: 金沢市）
 #     { type: get,  url|urls, format?, encoding? } URLを直接GET（urls は複数結合）
 #     { type: post, url, body, format? }           フォームPOSTで取得（京都市 等）
 #     { type: resolve, pageUrl, linkPattern?, hrefPattern?, format } 掲載ページから最新の実URLを解決
@@ -20,6 +25,11 @@
 #         hrefScan: true <a> に限らず生HTML中で hrefPattern に一致するURL/パスを拾う
 #                        （<button value="..."> 等 アンカー以外にURLが埋まっているページ向け）
 #         linkFormat     リンク抽出時の拡張子フィルタ（省略時は format。拡張子とパース形式が違う時に使う）
+#         pickLatest: true 複数一致したとき DOM順の先頭ではなく日付が最大の候補を採用する
+#                        （同一ページに複数年度のファイルが並存し、DOM順に依存すると古いデータを
+#                        静かに掴む危険がある自治体向け。例: いわき市・神戸市。日付の抽出は
+#                        西暦4/6/8桁・和暦(R08 / R0803 / R080331)に対応。西暦と和暦が候補間で
+#                        混在している場合や日付を抽出できる候補が1件も無い場合は例外を投げる）
 #     { type: i2fasglob }                          .cache/i2fas/*.csv を一括取込（厚労省 i2fas）
 #     format:   csv | tsv | xlsx | xls（省略時はURL/CKAN情報から推定）
 #     encoding: utf-8 | shift_jis | utf-16 | auto（既定 auto）
@@ -518,10 +528,16 @@ sources:
     defaultPref: 福島県
     defaultCity: 福島市
   - key: iwaki
+    # 掲載ページに複数年度のCSV（R07/R08 等）が並存し、年1回ファイル名の和暦年が繰り上がる。
+    # DOM順の先頭を採用すると古い年度を掴む危険があるため pickLatest で最新年度を選ぶ。
+    # hrefPattern は「Shokuhin_itiran_R + 2桁 + .csv」の年ベースファイルのみに絞り、
+    # 同じページに並ぶ月次差分（Shokuhin_itiran_R0604.csv 等、年+月4桁）を除外する。
     acquire:
-      type: get
-      url: https://www.city.iwaki.lg.jp/www/contents/1652661537484/simple/Shokuhin_itiran_R08.csv
+      type: resolve
+      pageUrl: https://www.city.iwaki.lg.jp/www/contents/1652661537484/index.html
+      hrefPattern: 'Shokuhin_itiran_R\d{2}\.csv$'
       format: csv
+      pickLatest: true
       encoding: utf-8
     source: いわき市食品営業許可施設一覧
     sourceUrl: https://www.city.iwaki.lg.jp/www/contents/1652661537484/index.html
@@ -709,9 +725,13 @@ sources:
     defaultPref: 富山県
     defaultCity: 富山市
   - key: kanazawa
+    # CKAN API（resource_show）は200で通るが、返る result.url は空文字。
+    # datastore_active:true が立っている datastore 専用リソースで、実体はfilestoreではなく
+    # CKAN の datastore テーブル側にしか無い。acquire.js 側で datastore/dump にフォールバックする。
     acquire:
-      type: get
-      url: https://catalog-data.city.kanazawa.ishikawa.jp/datastore/dump/09a49521-cabf-40b4-978b-bd61ef02f650?bom=true
+      type: ckan
+      ckanBase: https://catalog-data.city.kanazawa.ishikawa.jp
+      resourceId: 09a49521-cabf-40b4-978b-bd61ef02f650
       format: csv
       encoding: utf-8
     source: 金沢市食品衛生関係営業許可施設一覧
@@ -720,11 +740,14 @@ sources:
     defaultPref: 石川県
     defaultCity: 金沢市
   - key: fukui-pref
+    # 776/777 の2データセットを1ソースとして結合する。ckan.odp.jig.jp で resource_show を実際に
+    # 叩いて確認済み: 各 resourceId が返す result.url は現行の直リンクURLと完全一致する。
     acquire:
-      type: get
-      urls:
-        - https://data.odp.jig.jp/viewcsv/jp/fukui/776.csv
-        - https://data.odp.jig.jp/viewcsv/jp/fukui/777.csv
+      type: ckan
+      ckanBase: https://ckan.odp.jig.jp
+      resourceId:
+        - fdc03bef-3212-46f7-8768-907adf08eee0 # https://data.odp.jig.jp/viewcsv/jp/fukui/776.csv
+        - 77c101ac-47b0-49ed-9fba-e8cfdecec602 # https://data.odp.jig.jp/viewcsv/jp/fukui/777.csv
       format: csv
       encoding: utf-8
     source: 福井県食品営業許可取得施設
@@ -871,10 +894,18 @@ sources:
     defaultPref: 大阪府
     defaultCity: 吹田市
   - key: kobe
+    # 掲載ページに「全ての許可施設」の現行版（2026年3月末現在）と改正前旧法版（2021年5月末現在）が
+    # 同じ文言テンプレで並存する。現状はDOM順（現行版が先）でたまたま正しいが、
+    # 順序が変われば静かに5年前のデータを取り始めるため pickLatest で最新日付を選ぶ。
+    # linkPattern はどちらも先頭が「全ての許可施設」で始まる（月次の新規許可施設一覧・
+    # 理容所等の他施設一覧とはここで区別できる）。日付はリンク文言中の「YYYY年M月」から抽出する
+    # （href側は現行版が14桁タイムスタンプ・旧法版が和暦ファイル名で表記が揃っておらず比較できない）。
     acquire:
-      type: get
-      url: https://www.city.kobe.lg.jp/documents/6359/20260407150739.csv
+      type: resolve
+      pageUrl: https://www.city.kobe.lg.jp/a99427/kenko/health/hygiene/dataset.html
+      linkPattern: '^全ての許可施設'
       format: csv
+      pickLatest: true
       encoding: shift_jis
     source: 神戸市食品営業許可施設一覧
     sourceUrl: https://www.city.kobe.lg.jp/a99427/kenko/health/hygiene/dataset.html
