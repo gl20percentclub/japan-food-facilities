@@ -7,14 +7,14 @@
 
 ```mermaid
 flowchart TB
-  subgraph src["このリポジトリ（単一の情報源）"]
-    yaml["config/sources.yaml<br/>データソース定義"]
+  subgraph pub["このリポジトリ（公開・サイトとデータの窓口）"]
     readme["README.md"]
-    code["scripts/"]
     site["site/<br/>静的サイト"]
   end
 
   subgraph crawler["japan-facilities-crawler（private / Fargate）"]
+    yaml["config/sources.yaml<br/>データソース定義"]
+    code["クロール処理 scripts/"]
     run["週次クロール<br/>毎週月曜 18:00 UTC"]
   end
 
@@ -26,20 +26,24 @@ flowchart TB
   yaml --> run
   code --> run
   run -->|"結合CSV / 都道府県別CSV<br/>ベクトルタイル"| s3
-  run -->|"README の STATS ブロックだけ"| readme
+  run -->|"README の STATS ブロック<br/>attribution.html / llms*.txt"| readme
+  run --> site
 
-  yaml -->|"npm run build:attribution"| site
-  readme -->|"npm run build:llms"| site
-  site -->|"pages.yml"| ghp
+  site -->|"pages.yml（再生成なし）"| ghp
 ```
 
 ポイントは2つです。
 
-1. **クロールはこのリポジトリでは走らない。** 週次クロールと S3 への配信は、別リポジトリ
+1. **クロール処理はこのリポジトリには無い。** 取得ノウハウ（自治体・省庁ごとの正規表現や
+   正規化ロジック）が競争優位性のため、private リポジトリ
    [japan-facilities-crawler](https://github.com/gl20percentclub/japan-facilities-crawler)
-   の Fargate タスクが担います。結合CSV は数百MB あり、GitHub の 100MB 制限で Git 配信
-   できないためです。このリポジトリは `api/` を生成も管理もしません（`.gitignore` 対象）。
-2. **データとページで配信先が違う。** データは S3 + CloudFront、静的ページは GitHub Pages です。
+   へ移行した（ADR は private リポジトリの `docs/adr/0001-crawl-script-ownership.md` を参照）。
+   結合CSV は数百MB あり GitHub の 100MB 制限で Git 配信できない点も変わらず、このリポジトリは
+   `api/` を生成も管理もしない（`.gitignore` 対象）
+2. **このリポジトリが持つのは公開サイト（`site/`）とデータの窓口（README・ドキュメント）だけ。**
+   `site/attribution.html` / `site/llms.txt` / `site/llms-full.txt` は private リポジトリの
+   Fargate タスクが生成してこのリポジトリへ push する**成果物**で、直接編集しない
+3. **データとページで配信先が違う。** データは S3 + CloudFront、静的ページは GitHub Pages です。
 
 ## ディレクトリ構成
 
@@ -49,87 +53,75 @@ japan-food-facilities/
 ├── CONTRIBUTING.md        # 貢献の手順
 ├── AGENTS.md              # AIコーディングエージェント向けのガイド
 │
-├── config/
-│   └── sources.yaml       # データソース定義。自治体の追加はここだけ
-│
 ├── site/                  # gh-pages に配信する静的サイト（中身がそのまま公開される）
 │   ├── index.html
 │   ├── map.html
 │   ├── playground.html    # map.html へのリダイレクト
-│   ├── attribution.html   # 自動生成
-│   ├── llms.txt           # 自動生成
-│   ├── llms-full.txt      # 自動生成
+│   ├── attribution.html   # private リポジトリが生成して push する成果物
+│   ├── llms.txt           # 同上
+│   ├── llms-full.txt      # 同上
 │   └── _headers
 │
 ├── docs/
 │   ├── ARCHITECTURE.md    # このファイル
 │   ├── DATA.md            # 収録範囲・精度・更新頻度
-│   └── COVERAGE.md        # 自治体ごとの収録状況（自動生成）
+│   └── COVERAGE.md        # 自治体ごとの収録状況（private リポジトリが生成して push する）
 │
 ├── scripts/
-│   ├── crawl.js           # エントリポイント: 取得 → 正規化 → 配信物の生成
-│   ├── validate-api.js    # エントリポイント: 生成済み api/ の検証
-│   ├── lib/               # 取得・パース・正規化・ジオコーディング・名寄せ
-│   ├── build/             # 配信物の生成（結合CSV・都道府県別CSV・ベクトルタイル）
-│   ├── generate/          # ドキュメントの生成（attribution.html・llms*.txt・README統計）
-│   └── tools/             # 単発・保守用（本番パイプラインからは呼ばれない）
+│   ├── build/tiles.js         # ベクトルタイル生成。preview-map.test.js の検証専用に残している
+│   ├── preview-map.test.js    # map.html とタイル生成物の整合性テスト
+│   ├── map-filter.test.js     # map.html の業種フィルターの整合性テスト
+│   └── workflows.test.js      # 配信ワークフローの設定テスト
 │
-└── api/                   # 生成物。.gitignore 対象で Git 管理しない
+└── api/                   # 配信物。このリポジトリには存在しない（S3 + CloudFront から配信）
 ```
 
 テストは実装と同じディレクトリに `*.test.js` として置いています。
 
-## クロールの流れ
-
-`scripts/crawl.js` が全体のオーケストレーターで、各段の実装は `scripts/lib/` にあります。
-
-| 段 | 実装 | やること |
-| --- | --- | --- |
-| 取得 | `lib/acquire.js` | `sources.yaml` の `acquire` に従って CSV・Excel を取ってくる（CKAN / 直接GET / POST / 掲載ページからのURL解決） |
-| パース | `lib/parse.js` | 文字コードを判定して表形式に変換する |
-| 正規化 | `lib/normalize.js` | 自治体ごとにバラバラな列名を内部キーに寄せ、共通の項目へ変換する |
-| 名寄せ | `lib/city-normmap.js` | 市区町村の表記ゆれを正規化する |
-| ジオコーディング | `lib/geocode.js` | 座標を持たないレコードを住所から補完する |
-| 座標の品質フィルタ | `lib/coord-quality.js` | 施設の位置として信用できない座標を落とす（レコードは残す） |
-| 行政界の突き合わせ | `lib/pref-boundary.js` | 都道府県の外に落ちている座標を落とす |
-| 座標の統一 | `lib/name-cluster.js` | 同一施設とみなせる近接レコードの座標を1点に寄せる |
-| 出力 | `build/*.js` | 結合CSV・都道府県別CSV・ベクトルタイルを `api/` に書き出す |
-
-生成物が正しいかは `scripts/validate-api.js`（`npm run test:api`）が検証します。
-これはユニットテストではなく、クロール後の `api/` が無いと動きません。
+**クロール（取得・正規化・配信物生成）の実装は private リポジトリ
+[japan-facilities-crawler](https://github.com/gl20percentclub/japan-facilities-crawler) にあります。**
+`config/sources.yaml`（データソース定義）、`scripts/lib/`（取得・正規化・ジオコーディング）、
+`scripts/build/`（`tiles.js` を除く結合CSV・都道府県別CSV生成）、`scripts/generate/`
+（`attribution.html`・`llms*.txt`・README統計の生成）は、いずれもこのリポジトリではなく
+private リポジトリ側にあります。
 
 ## 生成物と生成元
 
-**生成物は直接編集しないでください。** 生成元を変えて再生成します。
+**生成物は直接編集しないでください。** private リポジトリ側の生成元を変えて再生成します。
 
-| 生成物 | 生成元 | 再生成 | 誰が更新するか |
-| --- | --- | --- | --- |
-| `site/attribution.html` | `config/sources.yaml` | `npm run build:attribution` | このリポジトリ |
-| `site/llms.txt` / `site/llms-full.txt` | `README.md` | `npm run build:llms` | このリポジトリ |
-| `README.md` の STATS ブロック | クロール結果 | — | 週次クローラー |
-| `docs/COVERAGE.md` | クロール結果 | — | 週次クローラー |
-| `api/` 一式 | クロール結果 | — | 週次クローラー |
+| 生成物 | 生成元 | 誰が生成・pushするか |
+| --- | --- | --- |
+| `site/attribution.html` | private リポジトリの `config/sources.yaml` | 週次クローラー（Fargate） |
+| `site/llms.txt` / `site/llms-full.txt` | private リポジトリの生成スクリプト・このリポジトリの `README.md` | 週次クローラー（Fargate） |
+| `README.md` の STATS ブロック | クロール結果 | 週次クローラー（Fargate） |
+| `docs/COVERAGE.md` | クロール結果 | 週次クローラー（Fargate） |
+| `api/` 一式 | クロール結果 | 週次クローラー（Fargate、S3 + CloudFrontへ） |
 
 ### 所有権の境界
 
-`config/sources.yaml` と、そこから作られる `attribution.html` / `llms*.txt` は
-**このリポジトリが唯一の情報源**です。クローラー側がこれらを生成・push してはいけません。
-外部から渡してよいのは README の STATS ブロックだけです。
+`config/sources.yaml` と生成スクリプト一式は **private リポジトリが唯一の情報源**です。
+このリポジトリは生成元のコピーを持たず、`site/attribution.html` / `llms*.txt` を
+週次クローラーが push した**成果物として受け取るだけ**です。このリポジトリ側で
+再生成・上書きしないでください（生成元が無いため再生成コマンド自体が存在しません）。
 
 過去に、クローラーが自分の持っていた古い `sources.yaml` のスナップショットから
 `attribution.html` を生成して main に push し、旧リポジトリ名とライセンス未確定で除外した
-ソースが公開ページへ巻き戻る事故がありました。
+ソースが公開ページへ巻き戻る事故がありました。生成元を private リポジトリ側の1箇所に
+一本化したのは、この種の巻き戻りを構造的に起こせなくするためです。
 
 ## ワークフロー
 
 | ファイル | 発火 | 役割 |
 | --- | --- | --- |
-| `ci.yml` | PR / main への push | `npm run test:unit` を実行。生成物の同期テストを含むので、生成元だけ直して再生成し忘れた PR はここで落ちる |
-| `pages.yml` | main への push（`site/**` 等） | `site/` を gh-pages へ配信。配信前に必ず生成元から作り直すので、公開ページは常に main と一致する |
-| `generated-docs.yml` | main への push | main 上の生成物が生成元とずれていたら再生成してコミットする（自己修復） |
+| `ci.yml` | PR / main への push | `npm run test:unit`（site/ の整合性テスト・配信ワークフロー設定テスト）を実行 |
+| `pages.yml` | main への push（`site/**` 等） | `site/` をそのまま gh-pages へ配信（配信前の再生成はしない） |
+
+かつては `pages.yml` が配信前に `attribution.html` / `llms*.txt` を再生成し、
+生成物のドリフトを自己修復する `generated-docs.yml` も存在したが、生成元が private
+リポジトリへ移行したことでこのリポジトリ側では再生成できなくなったため、いずれも撤去した。
 
 配信ワークフローの設定は `scripts/workflows.test.js` が固定しています。
-`pages.yml` / `generated-docs.yml` / `ci.yml` を変更したら、このテストも必ず確認してください。
+`pages.yml` / `ci.yml` を変更したら、このテストも必ず確認してください。
 
 ### 配信の注意点
 
@@ -143,11 +135,10 @@ japan-food-facilities/
 
 | やりたいこと | 触るファイル |
 | --- | --- |
-| 自治体を追加する | `config/sources.yaml` |
-| 元データの列名の揺れに対応する | `config/sources.yaml` の `columns:` |
-| 正規化のロジックを直す | `scripts/lib/normalize.js` |
-| 配信するCSVの列を変える | `scripts/build/merged-csv.js` |
-| ベクトルタイルの中身を変える | `scripts/build/tiles.js` |
+| 自治体を追加する | private リポジトリの `config/sources.yaml`（このリポジトリでは対応不可） |
+| 正規化のロジックを直す | private リポジトリの `scripts/lib/normalize.js`（このリポジトリでは対応不可） |
+| 配信するCSVの列を変える | private リポジトリの `scripts/build/merged-csv.js`（このリポジトリでは対応不可） |
+| ベクトルタイルの中身を変える | private リポジトリの `scripts/build/tiles.js`。このリポジトリの `scripts/build/tiles.js`（検証専用のコピー）も追従させ、`scripts/preview-map.test.js` を通す |
 | LP・地図の見た目を変える | `site/index.html` / `site/map.html` |
-| 出典表示ページの内容を変える | `scripts/generate/attribution.js`（`attribution.html` は生成物） |
-| AI向けドキュメントを変える | `README.md`（`llms*.txt` は生成物） |
+| 出典表示ページの内容を変える | private リポジトリの生成スクリプト（`attribution.html` はこのリポジトリでは編集しない） |
+| AI向けドキュメントを変える | README 本文は `README.md`（`llms*.txt` は private リポジトリが生成する成果物） |
