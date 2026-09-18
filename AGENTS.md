@@ -63,8 +63,6 @@ site/playground.html    # map.html へのリダイレクトだけの薄いペー
 site/attribution.html   # 出典表示ページ。private リポジトリが生成して push する成果物。直接編集しない
 site/llms.txt           # AI向けドキュメント。同上（直接編集しない）
 site/llms-full.txt      # 同上
-scripts/build/tiles.js       # ベクトルタイル生成（scripts/preview-map.test.js が地図の整合性検証に使う）
-scripts/preview-map.test.js  # map.html とタイル生成物の整合性テスト
 scripts/map-filter.test.js   # map.html の業種フィルターの整合性テスト
 scripts/workflows.test.js    # 配信ワークフロー（pages.yml 等）の設定テスト
 docs/COVERAGE.md        # 自治体ごとの収録状況（private リポジトリが生成して push する）
@@ -116,15 +114,17 @@ api/                    # 配信物。このリポジトリには存在しない
 `config/sources.yaml` は、どの自治体・省庁のどのページから、どんな正規表現でファイルを見つけ、
 どう正規化しているかという取得ノウハウそのものであり、**競争優位性のため非公開化した**
 （private リポジトリ `gl20percentclub/japan-facilities-crawler` の ADR 0001 で決定）。
-このリポジトリには `scripts/crawl.js` / `scripts/lib/` / `scripts/build/`（`tiles.js` を除く）/
-`scripts/generate/` / `scripts/tools/` / `scripts/validate-api.js` / `config/sources.yaml` は
-**存在しない**。週次クロールは private リポジトリの Fargate タスクが実行し、結果を
+このリポジトリには `scripts/crawl.js` / `scripts/lib/` / `scripts/build/` / `scripts/generate/` /
+`scripts/tools/` / `scripts/validate-api.js` / `config/sources.yaml` は**存在しない**。
+週次クロールは private リポジトリの Fargate タスクが実行し、結果を
 S3 + CloudFront（データ）とこのリポジトリの `site/`・README（生成ドキュメント・統計）へ push する。
 
-- `scripts/build/tiles.js` は例外として残っている。`scripts/preview-map.test.js`
-  （`map.html` とベクトルタイルの整合性テスト）が実際にタイルを生成して検証に使うため。
-  ベクトルタイルのパッケージング処理自体は自治体ごとの取得ノウハウを含まないため、
-  この整合性テストのために公開のまま残す判断をした
+- `scripts/build/tiles.js`（ベクトルタイル生成）と、それに依存していた
+  `scripts/preview-map.test.js`（`map.html` とタイル生成物の整合性テスト）はこのリポジトリには
+  無い。tiles.js は private リポジトリ側にも同じものが存在するため、両リポに同一ファイルを
+  置くと ADR の中心原則（コピーを持たないことで巻き戻りを構造的に起こせなくする）に反する。
+  そのため tiles.js に依存する検証はこのリポジトリからは行わない
+  （公開リポ側でこの整合性を検証する代替手段は未決。撤去した PR の本文を参照）
 - `site/attribution.html` / `site/llms.txt` / `site/llms-full.txt` は生成元が private
   リポジトリへ移ったが、公開ページとしてはこのリポジトリの `site/` に置いたまま配信する
   （**コミット済みの成果物として扱う。直接編集しない**）

@@ -68,8 +68,6 @@ japan-food-facilities/
 │   └── COVERAGE.md        # 自治体ごとの収録状況（private リポジトリが生成して push する）
 │
 ├── scripts/
-│   ├── build/tiles.js         # ベクトルタイル生成。preview-map.test.js の検証専用に残している
-│   ├── preview-map.test.js    # map.html とタイル生成物の整合性テスト
 │   ├── map-filter.test.js     # map.html の業種フィルターの整合性テスト
 │   └── workflows.test.js      # 配信ワークフローの設定テスト
 │
@@ -81,9 +79,16 @@ japan-food-facilities/
 **クロール（取得・正規化・配信物生成）の実装は private リポジトリ
 [japan-facilities-crawler](https://github.com/gl20percentclub/japan-facilities-crawler) にあります。**
 `config/sources.yaml`（データソース定義）、`scripts/lib/`（取得・正規化・ジオコーディング）、
-`scripts/build/`（`tiles.js` を除く結合CSV・都道府県別CSV生成）、`scripts/generate/`
+`scripts/build/`（結合CSV・都道府県別CSV・ベクトルタイル生成）、`scripts/generate/`
 （`attribution.html`・`llms*.txt`・README統計の生成）は、いずれもこのリポジトリではなく
 private リポジトリ側にあります。
+
+**注意:** かつては `scripts/build/tiles.js` と、それを使って `map.html` とタイル生成物の
+整合性を検証する `scripts/preview-map.test.js` をこのリポジトリにも置いていたが、
+private リポジトリ側にも同じ `tiles.js` があり同一ファイルの二重管理になるため撤去した
+（ADR の中心原則「コピーを持たない」に反するため）。**この撤去により、`map.html` の
+レイヤ名・ズーム範囲・属性がタイル生成物とズレていないかを検証する仕組みが公開リポ側から
+無くなっている。** 代替手段は未決（該当PRの本文を参照）。
 
 ## 生成物と生成元
 
@@ -138,7 +143,7 @@ private リポジトリ側にあります。
 | 自治体を追加する | private リポジトリの `config/sources.yaml`（このリポジトリでは対応不可） |
 | 正規化のロジックを直す | private リポジトリの `scripts/lib/normalize.js`（このリポジトリでは対応不可） |
 | 配信するCSVの列を変える | private リポジトリの `scripts/build/merged-csv.js`（このリポジトリでは対応不可） |
-| ベクトルタイルの中身を変える | private リポジトリの `scripts/build/tiles.js`。このリポジトリの `scripts/build/tiles.js`（検証専用のコピー）も追従させ、`scripts/preview-map.test.js` を通す |
+| ベクトルタイルの中身を変える | private リポジトリの `scripts/build/tiles.js`（このリポジトリには無い） |
 | LP・地図の見た目を変える | `site/index.html` / `site/map.html` |
 | 出典表示ページの内容を変える | private リポジトリの生成スクリプト（`attribution.html` はこのリポジトリでは編集しない） |
 | AI向けドキュメントを変える | README 本文は `README.md`（`llms*.txt` は private リポジトリが生成する成果物） |
