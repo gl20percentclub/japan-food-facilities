@@ -5,21 +5,17 @@ name: Deploy Pages
 # へ配信する。ここではページだけを上書きし、gh-pages 上の既存ファイルには触れない
 # （keep_files: true）。gh-pages への配信ワークフローはこれ1本だけ。
 #
-# 自動生成ページ（attribution.html / llms.txt / llms-full.txt）は配信前に必ず
-# 生成元（config/sources.yaml・README.md）から作り直す。リポジトリにコミット済みの
-# ファイルが古くても、配信されるページは常に main の生成元と一致する。
-# （過去に外部の自動コミットで古い attribution.html が main に入り、旧リポジトリ名と
-#  除外済みソースが公開ページへ巻き戻る事故があった）
+# 自動生成ページ（attribution.html / llms.txt / llms-full.txt）は、クロール処理の
+# private リポジトリ移行後は private リポジトリ（japan-facilities-crawler）が生成して
+# このリポジトリへ push したものをそのまま配信する。生成元（config/sources.yaml・
+# 生成スクリプト）はこのリポジトリには無いため、配信前の再生成はしない
+# （site/ に置かれている内容がそのまま配信される）。
 on:
   push:
     branches: [main]
     paths:
       # site/ 配下がそのまま公開サイト。個別に列挙せず一括で拾う。
       - 'site/**'
-      - 'README.md'
-      - 'config/sources.yaml'
-      - 'scripts/generate/attribution.js'
-      - 'scripts/generate/llms.js'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -37,22 +33,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      # 生成スクリプトは js-yaml だけで動くため devDependencies は入れない。
-      - name: Install dependencies
-        run: npm ci --omit=dev
-
-      # 配信するページを生成元から作り直す（コミット済みの内容に依存させない）。
-      - name: Regenerate generated pages
-        run: |
-          npm run build:attribution
-          npm run build:llms
 
       # 配信元は site/ だけ。site/ の中身が gh-pages のルートに置かれるため、
       # 公開 URL は従来どおり /index.html・/map.html・/llms.txt … になる。
