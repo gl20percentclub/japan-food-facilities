@@ -13,7 +13,7 @@
 // 使い方:
 //   node scripts/tools/sales-list.js --in api/prefectures/26.csv --out analysis/sales-list-26.csv
 //   node scripts/tools/sales-list.js --in api/facilities-all.csv --pref 京都府 --only-new
-//   node scripts/tools/sales-list.js --in api/prefectures/26.csv --new-keys analysis/new-keys.txt
+//   node scripts/tools/sales-list.js --in api/prefectures/26.csv --new-keys api/changes/added-keys.txt
 //
 // ---------------------------------------------------------------------------
 // 「新規」の根拠が2系統あることについて（ここが一番の設計判断）
@@ -23,6 +23,11 @@
 //   で受け取る。解釈の余地がなく、これが本命。
 //   差分の生成そのものはこのリポジトリの責務ではない（クロール基盤側の
 //   gl20percentclub/japan-facilities-crawler#36 が持つ）。ここは**受け取る口**だけを用意する。
+//
+//   `--new-keys` が読むのは、差分が配信する **`api/changes/added-keys.txt`**（1行1キー）。
+//   キーの形は recordKey() の doc コメントのとおりで、向こうの
+//   `docker/snapshot-diff.mjs` が単一の情報源。取得例:
+//     curl -o api/changes/added-keys.txt https://food.japan-facilities.com/api/changes/added-keys.txt
 //
 // 根拠B: 許可年月日が新しい（蓋然性が高いだけで、確定ではない）
 //   差分が手に入らないときのフォールバック。`license_date >= --new-since`（既定 2024-06-01）で
@@ -88,9 +93,14 @@ export const SALES_CSV_COLUMNS = [
   'licenses',
 ];
 
-/** 入力CSV に必ず要る列（配信CSV の列。欠けていたら入力を間違えている）。 */
+/**
+ * 入力CSV に必ず要る列（配信CSV の列。欠けていたら入力を間違えている）。
+ * 同一性キーに使う列（`sources` / `license_no` / `business_type` / `city` / `name` / `address`）が
+ * 1つでも欠けると、差分と突き合わせたときに全行が別レコード扱いになるので必ず含める。
+ */
 export const REQUIRED_INPUT_COLUMNS = [
-  'prefecture', 'city', 'name', 'business_type', 'address', 'phone', 'license_date', 'expire_date',
+  'prefecture', 'city', 'name', 'business_type', 'address', 'phone', 'license_no', 'license_date',
+  'expire_date', 'sources',
 ];
 
 /** `new_basis` に入れる根拠の識別子（列を分けたうえで、まとめて読む用）。 */
@@ -249,20 +259,54 @@ export function normalizePhone(raw) {
 }
 
 /**
+ * 同一性キーの主キーに使う列（許可番号がある行）。
+ * クロール基盤側 `docker/snapshot-diff.mjs` の `PRIMARY_KEY_COLUMNS` と同じ。
+ */
+export const PRIMARY_KEY_COLUMNS = ['sources', 'license_no', 'business_type'];
+
+/**
+ * 同一性キーの代替キーに使う列（許可番号が空の行）。
+ * クロール基盤側 `docker/snapshot-diff.mjs` の `FALLBACK_KEY_COLUMNS` と同じ。
+ */
+export const FALLBACK_KEY_COLUMNS = ['sources', 'city', 'name', 'address', 'business_type'];
+
+/** キーの区切り文字（本文に出てこない制御文字）。主キー/代替キーの種別も先頭1文字で分ける。 */
+const KEY_SEPARATOR = '\u0001';
+
+/**
  * レコードの同一性を判定するキーを作る（純粋関数）。
  *
- * 週次スナップショットの差分（`--new-keys`）と突き合わせるための鍵。差分を作る側
- * （クロール基盤側の #36）とこのツールで**同じ関数の結果**を使う必要があるため、
- * ここを単一の情報源にする。
+ * **この関数の単一の情報源はクロール基盤側の `docker/snapshot-diff.mjs`**
+ * （`gl20percentclub/japan-facilities-crawler#36`）。差分を出すのは向こうで、ここは
+ * その出力（`api/changes/added-keys.txt`）と突き合わせるだけなので、列の並び・区切り
+ * 文字・空白の扱い・代替キーへの切り替え条件のどれか1つでもズレると、`--new-keys` を
+ * 渡しても新規フラグが1件も立たない。**片方を変えたらもう片方が必ず壊れる**ので、
+ * 変更するときは両リポジトリを同じタイミングで直すこと。
  *
- * 元CSV の行番号は使わない。行番号は公開元が並べ替えただけでズレ、前週と別物に
- * なってしまう。代わりに 都道府県・許可番号・施設名・所在地 をタブで連結する
- * （許可番号が空の自治体があるため、許可番号だけでは鍵にならない）。
- * 空白のゆれ（全角空白・連続空白）は吸収する。
+ * 列の選定理由（向こうの doc コメントと同じ）:
+ *   - 元CSV の行番号は使わない。公開元が並べ替えただけで全行がズレる。
+ *   - `license_no`（許可番号）は保健所ごとの連番なので単独では一意にならない。
+ *     同じ都道府県内でも発行元が違えば同じ番号が出る。そこで**発行元とセットにする**。
+ *     結合CSV でそれにあたるのは `sources`（config/sources.yaml の `source` 名がそのまま
+ *     入る＝データを公開している主体）。`prefecture` は**施設の所在地**であって公開主体
+ *     ではなく、名寄せの改善で値が動くのでキーには向かない。
+ *   - `business_type` を足すのは、**同一施設が複数業種の許可を同じ番号で持つ**データが
+ *     あるため。結合CSV は業種違いを別レコードとして残す方針なので、業種を含めないと
+ *     2件が1キーに潰れる。
+ *   - `name` / `address` は元データの生の値なので、許可番号が空のソース向けの代替キーに
+ *     だけ使う（主キーに含めると、表記ゆれの修正が「消滅＋新規追加」に化ける）。
+ *
+ * 値の正規化は**前後の空白を落とすだけ**。連続空白の圧縮などをここで足すと向こうと
+ * 一致しなくなる。
  */
 export function recordKey(row) {
-  const norm = (v) => String(v ?? '').replace(/[\s　]+/g, ' ').trim();
-  return [norm(row.prefecture), norm(row.license_no), norm(row.name), norm(row.address)].join('\t');
+  const keyValue = (v) => (v === undefined || v === null ? '' : String(v).trim());
+  const licenseNo = keyValue(row.license_no);
+  // 許可番号があれば主キー（'L'）、無ければ代替キー（'C'）。先頭1文字で種別を分けるのは、
+  // たまたま同じ連結文字列になった主キーと代替キーがぶつからないようにするため。
+  const columns = licenseNo ? PRIMARY_KEY_COLUMNS : FALLBACK_KEY_COLUMNS;
+  const parts = columns.map((c) => keyValue(row[c]));
+  return (licenseNo ? 'L' : 'C') + KEY_SEPARATOR + parts.join(KEY_SEPARATOR);
 }
 
 /**
@@ -413,7 +457,11 @@ export function selectSalesRows(rows, {
 
 /**
  * 差分キー一覧のテキストを Set にする（純粋関数）。
- * 1行1キー（recordKey() の出力そのまま）。空行と `#` で始まる行は無視する。
+ *
+ * クロール基盤側が配信する `api/changes/added-keys.txt` の形式＝**1行1キー**を読む。
+ * キーは recordKey() と同じ文字列（先頭が `L`/`C`、区切りは制御文字 U+0001）なので、
+ * 行の中身は一切加工しない。空行と `#` で始まる行だけ無視する
+ * （手で作ったキー一覧に見出しを書けるようにするため。キーは必ず `L`/`C` で始まる）。
  */
 export function parseNewKeys(text) {
   const keys = new Set();

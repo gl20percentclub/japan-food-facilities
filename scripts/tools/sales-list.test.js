@@ -8,6 +8,10 @@
 //   - 電話番号が架電できる形に正規化され、欠損は欠損として落ちる
 //   - 「新規」フラグの2系統（スナップショット差分／許可年月日の推定）が別の列に分かれ、
 //     どちらで立ったのか必ず区別できる
+//
+// あわせて、同一性キー（recordKey）が差分を出す側＝クロール基盤の
+// `docker/snapshot-diff.mjs` と同じ列構成・同じ区切りで作られることを固定する。
+// ここがズレると --new-keys を渡しても新規フラグが1件も立たない。
 
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -17,6 +21,8 @@ import {
   BASIS_LICENSE_DATE_GUESS,
   BASIS_SNAPSHOT_DIFF,
   DEFAULT_NEW_SINCE,
+  FALLBACK_KEY_COLUMNS,
+  PRIMARY_KEY_COLUMNS,
   SALES_CSV_COLUMNS,
   buildSalesRow,
   cityFromAddress,
@@ -168,17 +174,43 @@ test('明らかな欠損の電話番号は空に倒す', () => {
 });
 
 // --- 新規フラグの2系統 --------------------------------------------------------
-test('recordKey: 行番号ではなく内容で同一性を判定する', () => {
+test('recordKey: 差分を出す側（#36）と同じ列構成・同じ区切りで作る', () => {
+  // クロール基盤側 docker/snapshot-diff.mjs の PRIMARY_KEY_COLUMNS / FALLBACK_KEY_COLUMNS と
+  // 1文字でもズレると --new-keys を渡しても新規フラグが立たない。列の並びごと固定する。
+  assert.deepEqual(PRIMARY_KEY_COLUMNS, ['sources', 'license_no', 'business_type']);
+  assert.deepEqual(FALLBACK_KEY_COLUMNS, ['sources', 'city', 'name', 'address', 'business_type']);
+
+  // 主キー: 許可番号がある行。先頭 'L' ＋ 区切りは制御文字 U+0001。
+  assert.equal(
+    recordKey(row()),
+    'L\u0001京都府食品営業許可\u0001第1号\u0001飲食店営業',
+  );
+  // 代替キー: 許可番号が空の行。先頭 'C' ＋ 市区町村・施設名・住所で内容ベースに切り替わる。
+  // city は配信CSV の値をそのまま使う（住所から切り出した値ではない。向こうも生の列を読む）。
+  assert.equal(
+    recordKey(row({ license_no: '' })),
+    'C\u0001京都府食品営業許可\u0001京都市\u0001居酒屋テスト\u0001京都府南丹市園部町小桜町47\u0001飲食店営業',
+  );
+  // 値の正規化は前後の空白を落とすだけ（連続空白の圧縮などを足すと向こうと一致しなくなる）
+  assert.equal(recordKey(row({ license_no: ' 第1号 ' })), recordKey(row()));
+  assert.notEqual(recordKey(row({ business_type: '飲食店  営業' })), recordKey(row()));
+});
+
+test('recordKey: 公開元・許可番号・業種で別レコードを区別する', () => {
   const a = recordKey(row());
-  // 空白のゆれは吸収する（前週との突き合わせが空白差で外れないように）
-  assert.equal(recordKey(row({ name: ' 居酒屋テスト ' })), a);
-  assert.equal(recordKey(row({ address: '京都府南丹市園部町小桜町47' })), a);
-  // 施設・所在地・許可番号が違えば別レコード
-  assert.notEqual(recordKey(row({ name: '居酒屋テスト2' })), a);
+  // 同一施設が同じ許可番号で複数業種を持つデータがあるため、業種が違えば別キー
+  assert.notEqual(recordKey(row({ business_type: '菓子製造業' })), a);
+  // 許可番号は保健所ごとの連番なので、公開元（sources）とセットで初めて鍵になる
+  assert.notEqual(recordKey(row({ sources: '大阪市食品営業許可' })), a);
   assert.notEqual(recordKey(row({ license_no: '第2号' })), a);
-  assert.notEqual(recordKey(row({ address: '京都府宇治市宇治琵琶33' })), a);
-  // 列の値をタブで連結した形（差分を作る側と同じ関数を使う前提）
-  assert.equal(a.split('\t').length, 4);
+  // prefecture は施設の所在地であって公開主体ではなく、名寄せで値が動くのでキーに入れない
+  assert.equal(recordKey(row({ prefecture: '大阪府' })), a);
+  // 施設名・住所は主キーには入れない（表記ゆれの修正が「消滅＋新規追加」に化けるため）
+  assert.equal(recordKey(row({ name: '別の名前', address: '京都府宇治市1' })), a);
+
+  // 主キーと代替キーは先頭1文字で分かれ、たまたま同じ連結文字列になっても衝突しない
+  assert.ok(recordKey(row()).startsWith('L\u0001'));
+  assert.ok(recordKey(row({ license_no: '' })).startsWith('C\u0001'));
 });
 
 test('isRecentLicense: 許可年月日が判定できない行は 0 と区別する', () => {
@@ -191,7 +223,8 @@ test('isRecentLicense: 許可年月日が判定できない行は 0 と区別す
 
 test('新規フラグは根拠ごとに別の列へ立てる', () => {
   const newRow = row({ license_date: '2025-04-01' });
-  const oldRow = row({ name: '老舗', license_date: '2021-06-01' });
+  // 別レコードにするため許可番号も変える（施設名・許可年月日は同一性キーに入らない）
+  const oldRow = row({ name: '老舗', license_no: '第9号', license_date: '2021-06-01' });
 
   // 差分が手に入らない場合: 差分の列は 0 ではなく空（「新規でない」と言い切らない）
   const noDiff = buildSalesRow(newRow);
@@ -230,11 +263,14 @@ test('推定でしかない根拠は列名で断る', () => {
   assert.ok(SALES_CSV_COLUMNS.includes('city_csv'));
 });
 
-test('parseNewKeys: 1行1キー・空行とコメントは無視する', () => {
-  const keys = parseNewKeys('# 2026-09-14 の差分\n\nA\tB\tC\tD\nE\tF\tG\tH\r\n');
+test('parseNewKeys: api/changes/added-keys.txt の 1行1キーを読む', () => {
+  // 差分側が出すのは加工なしのキー（先頭 L/C・区切り U+0001）。行の中身は一切触らない。
+  const primary = recordKey(row());
+  const fallback = recordKey(row({ license_no: '' }));
+  const keys = parseNewKeys(`# 2026-09-14 -> 2026-09-21\n\n${primary}\n${fallback}\r\n`);
   assert.equal(keys.size, 2);
-  assert.ok(keys.has('A\tB\tC\tD'));
-  assert.ok(keys.has('E\tF\tG\tH'));
+  assert.ok(keys.has(primary));
+  assert.ok(keys.has(fallback));
 });
 
 // --- 行の選択と統計 -----------------------------------------------------------
