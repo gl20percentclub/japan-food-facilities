@@ -9,6 +9,12 @@
   <meta http-equiv="refresh" content="0; url=./map.html">
   <link rel="canonical" href="./map.html">
   <meta name="robots" content="noindex">
+
+  <!-- アクセス解析（GA4）。測定IDと発火条件は analytics.js に集約している。
+       リダイレクト用のページだが、旧 URL がまだどれだけ踏まれているかを知りたいので
+       ここにも入れている。外部送信の内容は privacy.html で公表している。 -->
+  <script src="./analytics.js"></script>
+
   <style>
     body {
       margin: 0;
@@ -29,5 +35,7 @@
     検索プレイグラウンドは<strong>地図ページ</strong>に統合されました。<br>
     自動で移動しない場合は <a href="./map.html">地図と検索ページ</a> を開いてください。
   </p>
+  <!-- 計測タグを置いているページからは、必ず外部送信の公表ページへ辿れるようにする -->
+  <p><a href="./privacy.html">プライバシー・外部送信について</a></p>
 </body>
 </html>
