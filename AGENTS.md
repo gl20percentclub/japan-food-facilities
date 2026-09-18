@@ -67,9 +67,11 @@ scripts/crawl.js        # クローラー本体（取得→正規化→CSV・タ
 scripts/validate-api.js # 生成済み api/ のバリデーション（ユニットテストではない）
 scripts/lib/            # 取得・パース・正規化・ジオコーディング・名寄せの各実装
 scripts/build/          # 配信物の生成（結合CSV・都道府県別CSV・ベクトルタイル）
+scripts/enrich/         # 配信物に外部データを突き合わせて列を足す（週次クロールとは別実行）
 scripts/generate/       # ドキュメントの生成（attribution.html・llms*.txt・README統計）
 scripts/tools/          # 単発・保守用スクリプト（本番パイプラインからは呼ばれない）
 scripts/**/*.test.js    # ユニットテスト（自前 assert、純粋関数を固定入力で検証）
+docs/LAND-PRICE-RANK.md # 地価ベースの水準ランク（API利用申請・ランクの切り方）
 docs/COVERAGE.md        # 自治体ごとの収録状況（自動生成）
 api/                    # 生成物（.gitignore 対象。Git 管理しない）
 site/llms.txt           # AI向けドキュメント（README から自動生成。直接編集しない）
@@ -88,6 +90,10 @@ site/attribution.html   # 出典表示ページ（sources.yaml から自動生�
   `pages.yml` / `generated-docs.yml` / `ci.yml` を変更したらこのテストも必ず確認する
 - **`scripts/` は本番の週次クロールがそのまま実行する**（下記「クロール実行の仕組み」）。
   入口のファイル名・配置・依存の宣言は `scripts/crawler-contract.test.js` で固定してある
+- `scripts/enrich/` は週次クロールからは呼ばれない（配信物に列を足したいときだけ手で実行する）。
+  地価ベースの水準ランク（`enrich/land-price-rank.js`）は**賃料ではない**。賃料の金額は
+  公的オープンデータに存在しないため、金額に換算せずランクに留める。
+  API 利用申請・キーの扱い・未決の論点は [`docs/LAND-PRICE-RANK.md`](docs/LAND-PRICE-RANK.md) にある
 
 ## 配信の仕組み
 

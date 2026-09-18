@@ -64,6 +64,7 @@ japan-food-facilities/
 ├── docs/
 │   ├── ARCHITECTURE.md    # このファイル
 │   ├── DATA.md            # 収録範囲・精度・更新頻度
+│   ├── LAND-PRICE-RANK.md # 地価ベースの水準ランク（API利用申請・ランクの切り方）
 │   └── COVERAGE.md        # 自治体ごとの収録状況（自動生成）
 │
 ├── scripts/
@@ -71,6 +72,7 @@ japan-food-facilities/
 │   ├── validate-api.js    # エントリポイント: 生成済み api/ の検証
 │   ├── lib/               # 取得・パース・正規化・ジオコーディング・名寄せ
 │   ├── build/             # 配信物の生成（結合CSV・都道府県別CSV・ベクトルタイル）
+│   ├── enrich/            # 配信物に外部データを突き合わせて列を足す（週次クロールとは別実行）
 │   ├── generate/          # ドキュメントの生成（attribution.html・llms*.txt・README統計）
 │   └── tools/             # 単発・保守用（本番パイプラインからは呼ばれない）
 │
@@ -97,6 +99,18 @@ japan-food-facilities/
 
 生成物が正しいかは `scripts/validate-api.js`（`npm run test:api`）が検証します。
 これはユニットテストではなく、クロール後の `api/` が無いと動きません。
+
+## 配信物への列の追加（scripts/enrich/）
+
+`scripts/enrich/` は、**配信済みの CSV に外部データを突き合わせて列を足す**ための置き場です。
+週次クロールからは呼ばれず、必要なときに手で実行します（配信している CSV は変わりません）。
+
+| 実装 | やること | ドキュメント |
+| --- | --- | --- |
+| `enrich/land-price-rank.js` | 国交省 不動産情報ライブラリ（XPT002）から最寄りの商業地の地価を引き、5段階の水準ランクを付ける | [`LAND-PRICE-RANK.md`](LAND-PRICE-RANK.md) |
+
+地価ランクは**賃料ではありません**。賃料の金額は公的オープンデータに存在しないため、
+金額には換算せず水準ランクに留めています。詳しくは上記のドキュメントを参照してください。
 
 ## 生成物と生成元
 
@@ -151,3 +165,4 @@ japan-food-facilities/
 | LP・地図の見た目を変える | `site/index.html` / `site/map.html` |
 | 出典表示ページの内容を変える | `scripts/generate/attribution.js`（`attribution.html` は生成物） |
 | AI向けドキュメントを変える | `README.md`（`llms*.txt` は生成物） |
+| 地価ベースの水準ランクを付ける | `scripts/enrich/land-price-rank.js`（[`LAND-PRICE-RANK.md`](LAND-PRICE-RANK.md)） |
