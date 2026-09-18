@@ -10,6 +10,15 @@
 // データ（api/）の配信は外部の Fargate クローラー（S3 + CloudFront）へ移したため、
 // gh-pages へ配信するのは静的ページだけ。旧 crawl.yml は廃止済みで、復活しないことも
 // ここで固定する。
+//
+// クロール処理・生成ドキュメント（attribution.html/llms*.txt）の生成元
+// （config/sources.yaml・scripts/generate/）は private リポジトリ
+// （japan-facilities-crawler）へ移行済みで、このリポジトリには存在しない。
+// そのため以前とは逆に、次を禁止事項として固定する:
+//   - pages.yml が配信前にページを再生成しないこと（生成元が無いので再生成できない。
+//     site/ にコミット済みの内容がそのまま配信物になる）
+//   - generated-docs.yml（生成元とのドリフトを自己修復するワークフロー）が
+//     復活していないこと（対象が無くなったため撤去した）
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -54,6 +63,28 @@ const pages = loadWorkflow('pages.yml');
 assert(
   !fs.existsSync(path.join(ROOT, '.github/workflows/crawl.yml')),
   '廃止した crawl.yml が復活していない（クロールと配信は外部の Fargate クローラーが担う）',
+);
+
+// --- generated-docs.yml が復活していない ---
+// 生成ドキュメント（attribution.html/llms*.txt）の生成元（config/sources.yaml・
+// scripts/generate/）は private リポジトリへ移行済みで、このリポジトリには無い。
+// 生成元が無い状態でこのワークフローが存在すると、再生成コマンドがそもそも動かず
+// CI が壊れる。復活していないことをここで固定する。
+assert(
+  !fs.existsSync(path.join(ROOT, '.github/workflows/generated-docs.yml')),
+  '撤去した generated-docs.yml が復活していない（生成元は private リポジトリ側にある）',
+);
+
+// --- 生成元（config/sources.yaml・scripts/generate/）がこのリポジトリに無い ---
+// 誤って復活させると「このリポジトリが生成物の単一の情報源」という誤解を招き、
+// private リポジトリ側の生成元と二重管理になる（過去の巻き戻り事故と同じ構造）。
+assert(
+  !fs.existsSync(path.join(ROOT, 'config/sources.yaml')),
+  'config/sources.yaml が無い（データソース定義は private リポジトリ側が持つ）',
+);
+assert(
+  !fs.existsSync(path.join(ROOT, 'scripts/generate')),
+  'scripts/generate/ が無い（生成ドキュメントの生成元は private リポジトリ側が持つ）',
 );
 
 // --- .gitignore が api/ を無視している前提を確認する ---
@@ -130,58 +161,25 @@ for (const page of ['index.html', 'map.html', 'playground.html', 'attribution.ht
   );
 }
 
-// --- 自動生成ページは配信前に生成元から作り直す ---
-// コミット済みの attribution.html / llms*.txt が古くても（外部の自動コミット等）、
-// 公開ページは常に config/sources.yaml・README.md と一致させるための固定。
+// --- 自動生成ページを配信前に再生成しない ---
+// site/attribution.html・llms*.txt の生成元（config/sources.yaml・
+// scripts/generate/）は private リポジトリ（japan-facilities-crawler）へ移行済みで、
+// このリポジトリには無い。そのため配信前の再生成はできない・してはいけない
+// （このリポジトリでは生成できないコマンドを呼ぶだけの壊れたステップになる）。
+// これらのファイルは private リポジトリが生成して push した「コミット済みの成果物」
+// として扱い、site/ にある内容をそのまま配信する。
 const pagesRun = Object.values(pages.jobs ?? {})
   .flatMap((job) => job.steps ?? [])
   .map((step) => step.run ?? '')
   .join('\n');
 assert(
-  pagesRun.includes('build:attribution') && pagesRun.includes('build:llms'),
-  'pages.yml: 配信前に attribution.html / llms*.txt を再生成する',
+  !pagesRun.includes('build:attribution') && !pagesRun.includes('build:llms'),
+  'pages.yml: 配信前に attribution.html / llms*.txt を再生成しない（生成元が無いため）',
 );
-// 再生成が配信ステップより前にあること（順序が入れ替わると意味がない）。
-const pagesStepNames = Object.values(pages.jobs ?? {})
-  .flatMap((job) => job.steps ?? [])
-  .map((step) => (step.uses ?? '').startsWith('peaceiris/actions-gh-pages')
-    ? 'DEPLOY'
-    : (step.run ?? ''));
-assert(
-  pagesStepNames.findIndex((s) => s.includes('build:attribution'))
-    < pagesStepNames.indexOf('DEPLOY'),
-  'pages.yml: 再生成ステップが配信ステップより前にある',
-);
-// 生成元の変更だけでも配信が走る（生成物のコミット漏れで公開ページが古くならない）。
-for (const src of ['README.md', 'config/sources.yaml']) {
-  assert(pushPaths.includes(src), `pages.yml: ${src} の変更を配信対象にしている`);
+// 生成元だけの変更で配信が走る仕組みも不要（生成元自体がこのリポジトリに無い）。
+for (const src of ['config/sources.yaml']) {
+  assert(!pushPaths.includes(src), `pages.yml: ${src} は配信対象に含めない（このリポジトリに無い）`);
 }
-
-// --- 生成物のドリフトを検知・自己修復するワークフロー ---
-const genDocs = loadWorkflow('generated-docs.yml');
-const genDocsPushPaths = genDocs.on?.push?.paths ?? [];
-assert(
-  genDocs.on?.push?.branches?.includes('main'),
-  'generated-docs.yml: main への push で動く',
-);
-// PR でのドリフト検査は ci.yml のユニットテスト（同期テストを含む）が担う。
-const ci = loadWorkflow('ci.yml');
-const ciRun = Object.values(ci.jobs ?? {})
-  .flatMap((job) => job.steps ?? [])
-  .map((step) => step.run ?? '')
-  .join('\n');
-assert(ci.on?.pull_request !== undefined, 'ci.yml: PR でテストが走る');
-assert(ciRun.includes('test:unit'), 'ci.yml: ユニットテスト（生成物の同期検査を含む）を実行する');
-for (const generated of ['site/attribution.html', 'site/llms.txt', 'site/llms-full.txt']) {
-  assert(
-    genDocsPushPaths.includes(generated),
-    `generated-docs.yml: ${generated} への push を検査対象にしている（外部の古い自動コミット対策）`,
-  );
-}
-assert(
-  genDocs.permissions?.contents === 'write',
-  'generated-docs.yml: 自己修復コミットのため contents: write を持つ',
-);
 
 console.log('');
 if (failures > 0) {
