@@ -1,0 +1,149 @@
+name: Deploy Site to S3
+
+# 公開サイト（site/**）を独自ドメイン food.japan-facilities.com へ配信する。
+# main への push で S3（site 専用バケット）へ同期し、CloudFront のキャッシュを
+# 無効化する。gh-pages への配信（pages.yml）とは別系統で、当面は両方が動く
+# （新ドメインでの動作確認が終わってから gh-pages 側をリダイレクトに切り替える）。
+#
+# 認証は GitHub OIDC（assumeRoleWithWebIdentity）。アクセスキーは使わない。
+# ロールは private リポジトリ（japan-facilities-crawler）の CDK
+# （JapanFacilitiesCrawler スタックの PublicSiteDeployRole）が作成済みで、
+# 信頼する sub 条件はこのリポジトリの main ブランチだけに絞られている
+# （repo:gl20percentclub/japan-food-facilities:ref:refs/heads/main）。
+# 許可されている権限も次の2つだけ:
+#   - site 専用 S3 バケットへの読み書き（aws s3 sync --delete）
+#   - この1つの CloudFront ディストリビューションへの CreateInvalidation
+# /api/* の配信データ（390MB、DataBucket）が入った別バケットへの書き込み・削除は
+# ロール側のポリシーで明示的に Deny されている。バケットが物理的に別なので、
+# このワークフローの書き方に関わらず DataBucket には到達できない
+# （詳細は private リポジトリの docs/adr/0002-site-domain-migration.md を参照）。
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy-s3.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+# 短時間に main へ複数 push があっても S3 sync 同士が競合しないよう直列化する
+# （pages.yml の concurrency 設定と同じ考え方）。
+concurrency:
+  group: site-s3-deploy
+  cancel-in-progress: false
+
+# デプロイ先を1箇所にまとめて定義する。s3 sync / cp / cloudfront invalidation の
+# 全ステップがここだけを参照する（バケット名や distribution ID を各ステップに
+# 直書きしない）ことで、値の取り違えが起きる余地を構造的に減らす。
+# ロール側の Deny（上のコメント参照）と合わせて二重の防御になっている
+# ―― 仮にこの値を書き換えて別のバケットを指したとしても、OIDC ロールの
+# ポリシーがそのバケットへの権限を持たないため、sync 自体が AccessDenied で失敗する。
+env:
+  AWS_REGION: ap-northeast-1
+  SITE_BUCKET_NAME: japan-facilities-site-500207450484
+  CLOUDFRONT_DISTRIBUTION_ID: E3AKGPRKL94W0C
+  # cdk deploy 後の CfnOutput PublicSiteDeployRoleArn の値をそのまま使う。
+  AWS_DEPLOY_ROLE_ARN: arn:aws:iam::500207450484:role/japan-food-facilities-site-deploy
+
+jobs:
+  deploy:
+    # OIDC の信頼条件が main ブランチの push に限定されているため、それ以外の
+    # ref から workflow_dispatch で叩いても AWS 認証が通らない。ここでジョブ自体を
+    # スキップし、分かりにくい AssumeRoleWithWebIdentity エラーで落ちるのを避ける。
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # aws s3 sync は既定で Content-Type を binary/octet-stream にしてしまうため、
+      # 拡張子ごとに sync を分けて明示的に指定する。site/_headers（Netlify/Cloudflare
+      # 形式で GitHub Pages でも CloudFront でも実際には解釈されない設定ファイル）に
+      # 書かれていた意図を、拡張子ベースの指定として引き継ぐ。
+      #
+      # --exclude "*" --include "*.拡張子" は --delete と組み合わせても、その拡張子の
+      # ファイルだけを対象に同期・削除する（他の拡張子には触れない）。5回に分けて
+      # sync しても、それぞれが自分の拡張子の範囲だけで完結する。
+      # _headers 自体はどの拡張子にも一致しないため、いずれの sync でも対象にならず
+      # S3 へは配信されない（意味の無い設定ファイルを公開しない）。
+      # 現時点で site/ に .css ファイルは無いが、将来追加されたときに binary/octet-stream
+      # で配信されないよう先に用意しておく。
+      - name: Sync HTML pages
+        run: |
+          aws s3 sync site/ "s3://${{ env.SITE_BUCKET_NAME }}/" \
+            --delete \
+            --exclude "*" \
+            --include "*.html" \
+            --content-type "text/html; charset=utf-8" \
+            --cache-control "public, max-age=60"
+
+      - name: Sync CSS files
+        run: |
+          aws s3 sync site/ "s3://${{ env.SITE_BUCKET_NAME }}/" \
+            --delete \
+            --exclude "*" \
+            --include "*.css" \
+            --content-type "text/css; charset=utf-8" \
+            --cache-control "public, max-age=60"
+
+      - name: Sync JavaScript files
+        run: |
+          aws s3 sync site/ "s3://${{ env.SITE_BUCKET_NAME }}/" \
+            --delete \
+            --exclude "*" \
+            --include "*.js" \
+            --content-type "text/javascript; charset=utf-8" \
+            --cache-control "public, max-age=60"
+
+      # llms.txt / llms-full.txt。
+      - name: Sync plain-text files
+        run: |
+          aws s3 sync site/ "s3://${{ env.SITE_BUCKET_NAME }}/" \
+            --delete \
+            --exclude "*" \
+            --include "*.txt" \
+            --content-type "text/plain; charset=utf-8" \
+            --cache-control "public, max-age=60"
+
+      # sitemap.xml。
+      - name: Sync XML files
+        run: |
+          aws s3 sync site/ "s3://${{ env.SITE_BUCKET_NAME }}/" \
+            --delete \
+            --exclude "*" \
+            --include "*.xml" \
+            --content-type "application/xml; charset=utf-8" \
+            --cache-control "public, max-age=60"
+
+      # 5回の sync はいずれも S3 上の反映が終わっているため、最後に1回だけ invalidate
+      # する（sync ごとに invalidation すると同じパスを何度も無効化して無駄になる）。
+      #
+      # --paths "/*" は使わない。この distribution は /api/* も同じ CloudFront から
+      # 配信しており、"/*" だと api/*（390MB の配信データ、DataBucket）のキャッシュ
+      # まで巻き込んで無効化してしまう。site のデプロイと api の鮮度は無関係なので、
+      # 無関係なキャッシュ破棄でオリジン（DataBucket）への不要なリクエストを
+      # 誘発したくない。
+      #
+      # 代わりに site/ 配下の実ファイルだけを動的に列挙して --paths に渡す。
+      # site/ にサブディレクトリは無いが、find で列挙しているため将来ページが
+      # 増えても追従できる。列挙元が site/ の中に閉じている（api/ は site/ の外の
+      # 別ディレクトリ）ため、この結果に /api/... が混ざることは構造的に無い。
+      # _headers は配信していないので列挙対象からも除外する。
+      - name: Invalidate CloudFront cache
+        run: |
+          INVALIDATION_PATHS=$(cd site && find . -type f ! -name '_headers' | sed 's/^\.//')
+          # shellcheck disable=SC2086 # --paths は複数値を別々の引数として受け取るため、
+          # ここでの単語分割は意図通り（"$INVALIDATION_PATHS" と引用符で囲むと
+          # 改行区切りのリスト全体が1個の引数になり、--paths が1件しか渡されなくなる）。
+          aws cloudfront create-invalidation \
+            --distribution-id "${{ env.CLOUDFRONT_DISTRIBUTION_ID }}" \
+            --paths "/" $INVALIDATION_PATHS
