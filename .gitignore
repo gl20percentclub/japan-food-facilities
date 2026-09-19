@@ -15,3 +15,6 @@ map-*.jpeg
 map-*.jpg
 # Playwright MCP の作業ディレクトリ
 .playwright-mcp/
+# pages.yml が site/ を redirect-stubs/ で上書きしたコピーを作る一時ディレクトリ
+# （site/ 自体には書き込まない。gh-pages-dist/ は CI が使い捨てで生成する）
+gh-pages-dist/

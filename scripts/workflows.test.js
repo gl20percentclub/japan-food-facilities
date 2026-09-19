@@ -94,10 +94,17 @@ const gitignore = fs.readFileSync(path.join(ROOT, '.gitignore'), 'utf8');
 const ignoresApi = gitignore.split('\n').some((line) => line.trim() === 'api/');
 assert(ignoresApi, '.gitignore が api/ を無視している（配信物は Git 管理しない）');
 
-// --- 配信元が公開用ディレクトリ（site/）に限定されている ---
+// --- 配信ステップは pages.yml の1つだけ ---
 const allDeploySteps = deploySteps(pages).map((step) => ['pages.yml', step]);
 assert(allDeploySteps.length === 1, '配信ステップは pages.yml の1つだけ');
 
+// pages.yml は gh-pages への配信直前に、コミット済みの site/ を一時ディレクトリ
+// （publish_dir。Git 管理対象外、CI が使い捨てで生成する）へコピーしてから
+// redirect-stubs/ で上書きする。そのため publish_dir 自体はリポジトリ上に実在しない。
+// 「配信元にリポジトリのルートの余計なファイルが混ざらない」という守りたい性質は、
+// コピー元である site/ 側にあるかどうかで検証する（gh-pages-dist/ はその単純コピー +
+// 上書きなので、site/ に無いものは gh-pages-dist/ にも現れない。詳細は
+// scripts/redirect-stubs.test.js が実際にビルドを実行して検証している）。
 for (const [file, step] of allDeploySteps) {
   const withInputs = step.with ?? {};
   const excluded = String(withInputs.exclude_assets ?? '')
@@ -107,20 +114,22 @@ for (const [file, step] of allDeploySteps) {
     withInputs.publish_branch === 'gh-pages',
     `${file}: 配信先ブランチが gh-pages である`,
   );
-  // 配信元は公開用ディレクトリ（site/）に限定する。リポジトリのルートを配信すると
-  // README・docs/・config/ まで公開され、さらに .gitignore ごと配信された場合は
-  // 配信先の git add --all で api/ が無視されて gh-pages 上のデータが消える。
-  // 除外リストで塞ぐより、配信元を分けて構造的に起きなくするほうが確実。
+  // 配信元（publish_dir）はリポジトリのルートでも site/ 自体でもない専用のビルド先。
+  // リポジトリのルートを配信すると README・docs/・config/ まで公開され、さらに
+  // .gitignore ごと配信された場合は配信先の git add --all で api/ が無視されて
+  // gh-pages 上のデータが消える。除外リストで塞ぐより、配信元を分けて構造的に
+  // 起きなくするほうが確実。
   const publishDir = String(withInputs.publish_dir ?? '');
   assert(
     publishDir !== '.' && publishDir !== '' && publishDir !== './',
     `${file}: publish_dir がリポジトリのルートではない（実際: ${publishDir || '未指定'}）`,
   );
-  // 配信元に混ざってはいけないものが実際に無いことを確認する（除外リストの代わり）。
+  // コピー元（site/）に混ざってはいけないものが実際に無いことを確認する
+  // （除外リストの代わり。publish_dir は site/ の単純コピーなのでここで担保できる）。
   for (const forbidden of ['.gitignore', 'node_modules', 'scripts', 'package.json']) {
     assert(
-      !fs.existsSync(path.join(ROOT, publishDir, forbidden)),
-      `${file}: 配信元 ${publishDir}/ に ${forbidden} が無い`,
+      !fs.existsSync(path.join(ROOT, 'site', forbidden)),
+      `${file}: 配信元 site/ に ${forbidden} が無い（publish_dir はその単純コピー）`,
     );
   }
   // 除外リストを併用する場合は、上の前提を崩さない範囲であること。
@@ -130,10 +139,47 @@ for (const [file, step] of allDeploySteps) {
   );
 }
 
-// --- 役割 ---
-// pages.yml はページだけを上書きし、gh-pages 上の既存ファイルを消さない。
+// --- ビルドステップは site/ をコピーしてから publish_dir を組み立てている ---
+// （publishDir が site/ の単純コピーであるという上の前提そのものを固定する）
 const pagesDeploy = deploySteps(pages)[0]?.with ?? {};
-const pagesPublishDir = String(pagesDeploy.publish_dir ?? 'site');
+const pagesPublishDir = String(pagesDeploy.publish_dir ?? '');
+const pagesRunSteps = Object.values(pages.jobs ?? {}).flatMap((job) => job.steps ?? []);
+const buildStep = pagesRunSteps.find(
+  (step) => typeof step.run === 'string' && pagesPublishDir && step.run.includes(pagesPublishDir),
+);
+assert(!!buildStep, `pages.yml: ${pagesPublishDir || '(publish_dir)'} を組み立てる run ステップがある`);
+assert(
+  new RegExp(`cp\\s+-r\\s+site\\s+${pagesPublishDir}\\b`).test(buildStep?.run ?? ''),
+  `pages.yml: ビルドステップが site/ を ${pagesPublishDir}/ へコピーしている（cp -r site ${pagesPublishDir}）`,
+);
+// site/ 自体を書き換える行（cp の宛先が site/）が無いことも固定する。
+// site/ は deploy-s3.yml（新ドメイン）の配信元でもあるため、ここに書き込むと
+// 「新ドメイン → 新ドメイン」の無限リダイレクトになりうる。
+// run スクリプトは `\` による行継続で複数行にまたがるため、まず1論理コマンド
+// 1行にまとめてから宛先（最後のトークン）を見る。継続行の途中だけを見ると
+// 宛先が別の行にあるケースを見落とす。
+const runLines = (buildStep?.run ?? '').split('\n');
+const logicalCommands = runLines.reduce((lines, line) => {
+  const prev = lines[lines.length - 1];
+  if (prev !== undefined && /\\\s*$/.test(prev)) {
+    lines[lines.length - 1] = `${prev.replace(/\\\s*$/, '')} ${line.trim()}`;
+  } else {
+    lines.push(line);
+  }
+  return lines;
+}, []);
+const writesIntoSite = logicalCommands.some((line) => {
+  const trimmed = line.trim();
+  if (!/^cp\b/.test(trimmed)) return false;
+  const tokens = trimmed.split(/\s+/);
+  const dest = tokens[tokens.length - 1];
+  return ['site', 'site/', './site', './site/'].includes(dest);
+});
+assert(
+  !writesIntoSite,
+  'pages.yml: ビルドステップの cp コマンドの宛先が site/ 自体になっていない',
+);
+
 assert(
   pagesDeploy.keep_files === true,
   'pages.yml: keep_files が true（gh-pages 上の既存ファイルを消さない）',
@@ -149,16 +195,25 @@ assert(
 // --- ページの変更が push で配信される ---
 const pushPaths = pages.on?.push?.paths ?? [];
 assert(pages.on?.push?.branches?.includes('main'), 'pages.yml: main への push で動く');
-// 配信元ディレクトリ配下は一括で拾う。個別列挙だとページ追加時に書き忘れる。
+// ビルド元（site/）配下は一括で拾う。個別列挙だとページ追加時に書き忘れる。
 assert(
-  pushPaths.includes(`${pagesPublishDir}/**`),
-  `pages.yml: ${pagesPublishDir}/** の変更を配信対象にしている`,
+  pushPaths.includes('site/**'),
+  'pages.yml: site/** の変更を配信対象にしている',
 );
-// 公開しているページが配信元に実在することを確認する（移動・リネーム時の追従漏れ防止）。
-for (const page of ['index.html', 'map.html', 'playground.html', 'attribution.html', 'llms.txt', 'llms-full.txt']) {
+// リダイレクトスタブの変更でも再配信されないと、redirect-stubs/ だけを直しても
+// gh-pages に反映されない（scripts/redirect-stubs.test.js がスタブ自体の内容は検証する）。
+assert(
+  pushPaths.some((p) => p.startsWith('redirect-stubs')),
+  'pages.yml: redirect-stubs/** の変更も配信対象にしている',
+);
+// 自動生成ページ（private リポジトリが push する成果物）が配信元（site/）に実在する
+// ことを確認する（移動・リネーム時の追従漏れ防止）。リダイレクト対象のページ
+// （index.html 等）は redirect-stubs/ 側にあるので、そちらは
+// scripts/redirect-stubs.test.js が検証する。
+for (const page of ['attribution.html', 'llms.txt', 'llms-full.txt']) {
   assert(
-    fs.existsSync(path.join(ROOT, pagesPublishDir, page)),
-    `pages.yml: ${pagesPublishDir}/${page} がリポジトリに存在する`,
+    fs.existsSync(path.join(ROOT, 'site', page)),
+    `pages.yml: site/${page} がリポジトリに存在する（gh-pages でもそのまま配信される）`,
   );
 }
 

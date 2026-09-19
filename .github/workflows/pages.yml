@@ -1,21 +1,33 @@
 name: Deploy Pages
 
-# 静的ページ（LP・プレビュー地図・出典表示）を main への push で gh-pages に反映する。
-# データ（api/）はこのリポジトリでは生成せず、外部の Fargate クローラーが S3 + CloudFront
-# へ配信する。ここではページだけを上書きし、gh-pages 上の既存ファイルには触れない
-# （keep_files: true）。gh-pages への配信ワークフローはこれ1本だけ。
+# gh-pages（https://gl20percentclub.github.io/japan-food-facilities/）は
+# 新ドメイン（https://food.japan-facilities.com/、deploy-s3.yml が配信）への
+# リダイレクト専用サイトとして配信する。本来のページは site/ のまま S3 側だけに残し、
+# gh-pages にはリダイレクトスタブ（redirect-stubs/）を上書きしたコピーを配信する。
 #
-# 自動生成ページ（attribution.html / llms.txt / llms-full.txt）は、クロール処理の
-# private リポジトリ移行後は private リポジトリ（japan-facilities-crawler）が生成して
-# このリポジトリへ push したものをそのまま配信する。生成元（config/sources.yaml・
-# 生成スクリプト）はこのリポジトリには無いため、配信前の再生成はしない
-# （site/ に置かれている内容がそのまま配信される）。
+# 【最重要】site/ 自体は絶対に書き換えない。
+# deploy-s3.yml は site/** をそのまま新ドメイン（S3 + CloudFront）へ同期しているため、
+# もし site/ にリダイレクトを書き込むと新ドメインのページがリダイレクトに置き換わり、
+# 「新ドメイン → 新ドメイン」の無限リダイレクトになる。それを避けるため、この
+# ワークフローは site/ をチェックアウト後の別ディレクトリ（gh-pages-dist/）へコピーし、
+# そのコピーの上だけを redirect-stubs/ で上書きする。site/ 自体を読み取り専用として扱う
+# 限り、deploy-s3.yml（別ジョブ・別チェックアウト）にリダイレクト内容が混ざる経路は無い。
+# この分離は scripts/redirect-stubs.test.js が実際にビルド手順を実行して固定している。
+#
+# 上書き対象は redirect-stubs/ にある7ファイル（index/map/playground/coord-quality/
+# privacy/404.html + sitemap.xml）だけ。attribution.html / llms.txt / llms-full.txt /
+# analytics.js / _headers は site/ の中身がそのまま通る（redirect-stubs/README.md の
+# 「対象にしていないページ」を踏襲。生成元が private リポジトリ側にあるため）。
+#
+# gh-pages への配信ワークフローはこれ1本だけ。
 on:
   push:
     branches: [main]
     paths:
-      # site/ 配下がそのまま公開サイト。個別に列挙せず一括で拾う。
+      # site/（本来のページ）・redirect-stubs/（リダイレクト内容）の両方が
+      # gh-pages の配信結果に影響する。
       - 'site/**'
+      - 'redirect-stubs/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -34,14 +46,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 配信元は site/ だけ。site/ の中身が gh-pages のルートに置かれるため、
-      # 公開 URL は従来どおり /index.html・/map.html・/llms.txt … になる。
+      # site/ を gh-pages 専用の作業ディレクトリ（gh-pages-dist/）へコピーしてから
+      # redirect-stubs/ の内容で上書きする。コピー先を分けることで site/ 自体には
+      # 一切書き込まない（deploy-s3.yml の配信元と共有しているため触れてはいけない）。
+      - name: Build gh-pages content (site/ を redirect-stubs/ で上書きしたコピーを作る)
+        run: |
+          rm -rf gh-pages-dist
+          cp -r site gh-pages-dist
+          cp redirect-stubs/index.html redirect-stubs/map.html redirect-stubs/playground.html \
+             redirect-stubs/coord-quality.html redirect-stubs/privacy.html redirect-stubs/404.html \
+             redirect-stubs/sitemap.xml \
+             gh-pages-dist/
+
+      # 配信元は gh-pages-dist/（上のステップで作った一時ディレクトリ）。site/ には
+      # 書き込んでいないため、リポジトリ上の site/ は常に本来のページのままである。
       #
       # publish_dir をリポジトリのルート（.）にしていた頃は、README・docs/・config/・
       # package.json まで gh-pages に配信されていた。さらに .gitignore ごと配信されると
       # 配信先の git add --all で api/ が無視され、gh-pages 上のデータが全消えする事故が
       # あったため exclude_assets で個別に除外していた。site/ には .gitignore も
-      # node_modules も存在しないので、この危険は構造的に無くなる。
+      # node_modules も存在せず、gh-pages-dist/ はその site/ のコピーなので、
+      # この危険は構造的に無くなる。
       #
       # keep_files: true なので gh-pages 上の既存ファイルは残したまま、ページだけ
       # 上書きされる。反面ファイル削除は反映されない。ページをリネーム・削除したときは
@@ -50,6 +75,6 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: site
+          publish_dir: gh-pages-dist
           publish_branch: gh-pages
           keep_files: true
