@@ -16,8 +16,9 @@
 `index.html` / `map.html` / `playground.html` / `coord-quality.html` / `privacy.html`。
 
 `attribution.html` には入れていない（出典表示を確認するためのページで、閲覧状況を知る
-必要が薄いため）。入れる場合は生成物ではなく生成元
-`scripts/generate/attribution.js` を編集する。
+必要が薄いため）。入れる場合は生成物ではなく、生成元である private リポジトリ
+（japan-facilities-crawler）の `scripts/generate/attribution.js` を編集する
+（このリポジトリにはコピーを持たない）。
 
 ## 差し替えが必要なプレースホルダ
 

@@ -5,9 +5,9 @@
 // ここで固定したいのは次の3点。
 //
 // 1. 計測タグを置く先を間違えない。
-//    site/attribution.html・site/llms.txt・site/llms-full.txt は配信のたびに
-//    pages.yml が生成元から作り直す（build:attribution / build:llms）。生成物へ
-//    計測タグを書いても配信時に消えるので、書いてあること自体が事故の兆候になる。
+//    site/attribution.html・site/llms.txt・site/llms-full.txt は private リポジトリ
+//    （japan-facilities-crawler）が生成してこのリポジトリへ push する成果物。生成物へ
+//    計測タグを書いても次回の push で消えるので、書いてあること自体が事故の兆候になる。
 //
 // 2. 計測を入れたページからは必ず外部送信の公表ページ（privacy.html）へ辿れる。
 //    電気通信事業法の外部送信規律（第27条の12）は「通知・公表・同意取得・オプトアウト
@@ -171,18 +171,10 @@ for (const file of GENERATED_FILES) {
     );
   }
 }
-// 生成元のテンプレート側にも入っていないことを確認する（生成物と表裏一体）。
-// 「なぜ入れていないか」を説明した日本語コメントは生成元に残るため、HTML として
-// 出力されうる文字列だけを見る。
-for (const generator of ['scripts/generate/attribution.js', 'scripts/generate/llms.js']) {
-  const src = fs.readFileSync(path.join(ROOT, generator), 'utf-8');
-  for (const marker of ['googletagmanager', 'google-site-verification']) {
-    assert(
-      !src.includes(marker),
-      `${generator}: 生成元テンプレートに計測タグ（${marker}）が入っていない`,
-    );
-  }
-}
+// 生成元のテンプレート（scripts/generate/attribution.js・llms.js）は private リポジトリ
+// （japan-facilities-crawler）にのみ存在し、このリポジトリにはコピーを持たない
+// （ADR 0001: コピーを持たないことで巻き戻りを構造的に起こせなくする）。
+// そのため生成元テンプレート側の検証はこのリポジトリからは行わない。
 
 // --- Search Console の所有権確認は meta タグ方式 ---
 assert(
