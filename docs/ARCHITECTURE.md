@@ -151,3 +151,6 @@ japan-food-facilities/
 | LP・地図の見た目を変える | `site/index.html` / `site/map.html` |
 | 出典表示ページの内容を変える | `scripts/generate/attribution.js`（`attribution.html` は生成物） |
 | AI向けドキュメントを変える | `README.md`（`llms*.txt` は生成物） |
+| アクセス解析の測定IDを差し替える | `site/analytics.js`（手順は [ANALYTICS.md](ANALYTICS.md)） |
+| 外部送信の公表内容を変える | `site/privacy.html`（送信内容を変えたら必ず追従する） |
+| ページを追加する | `site/` に置く（`site/sitemap.xml` への追記も必要） |

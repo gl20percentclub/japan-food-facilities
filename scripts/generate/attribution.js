@@ -331,6 +331,12 @@ ${entries.map(renderEntry).join('\n')}
  * 出典表示ページの HTML 全体を描画する（純粋関数：同じ入力なら常に同じ出力）。
  * 生成日時などの変動値は埋め込まない。`npm test` で config との同期を検証するため。
  *
+ * このページには計測タグ（site/analytics.js）を入れていない。出典表示を確認するために
+ * 開くページで閲覧状況を知る必要が薄く、送信先を増やさない側に倒しているため。
+ * 計測したくなった場合は、生成物の attribution.html ではなくこのテンプレートへ
+ * script タグを足す（生成物を直接編集しても配信時に上書きされる）。その際は
+ * scripts/site-analytics.test.js の「生成物に計測タグが無い」検査も合わせて直すこと。
+ *
  * @param {object[]} entries buildEntries() の戻り値
  * @returns {string} attribution.html の中身
  */
@@ -522,6 +528,7 @@ ${sections.map(renderSection).join('\n')}
       </p>
       <p>
         <a href="./">← トップへ戻る</a> · <a href="./map.html">プレビュー地図</a> ·
+        <a href="./privacy.html">プライバシー</a> ·
         <a href="${REPO_URL}">GitHub リポジトリ</a>
       </p>
     </footer>
