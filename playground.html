@@ -3,11 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>検索プレイグラウンドは地図ページに統合されました — Japan Food Facilities</title>
-  <!-- 検索プレイグラウンドは map.html（地図と検索）へ統合した。
-       公開済みの URL からのアクセスを壊さないよう、このページはリダイレクトだけ行う。 -->
-  <meta http-equiv="refresh" content="0; url=./map.html">
-  <link rel="canonical" href="./map.html">
+  <title>検索プレイグラウンドは新しいドメインの地図ページへ移転しました</title>
+  <!-- 検索プレイグラウンドは map.html（地図と検索）へ統合済み。さらに公開サイト自体が
+       新ドメイン（food.japan-facilities.com）へ移行するため、旧ドメイン内の map.html を
+       経由せず新ドメインの map.html へ直接飛ばす。
+       有効化の手順は redirect-stubs/README.md を参照（まだ site/ には配置していない）。 -->
+  <meta http-equiv="refresh" content="0; url=https://food.japan-facilities.com/map.html">
+  <link rel="canonical" href="https://food.japan-facilities.com/map.html">
   <meta name="robots" content="noindex">
 
   <!-- アクセス解析（GA4）。測定IDと発火条件は analytics.js に集約している。
@@ -26,16 +28,18 @@
       font-size: 14px;
       line-height: 1.8;
       text-align: center;
+      padding: 24px;
     }
     a { color: #e8563f; }
   </style>
 </head>
 <body>
   <p>
-    検索プレイグラウンドは<strong>地図ページ</strong>に統合されました。<br>
-    自動で移動しない場合は <a href="./map.html">地図と検索ページ</a> を開いてください。
+    検索プレイグラウンドは<strong>地図ページ</strong>に統合され、
+    サイトも <strong>https://food.japan-facilities.com/</strong> へ移転しました。<br>
+    自動で移動しない場合は <a href="https://food.japan-facilities.com/map.html">新しい地図と検索ページ</a> を開いてください。
   </p>
   <!-- 計測タグを置いているページからは、必ず外部送信の公表ページへ辿れるようにする -->
-  <p><a href="./privacy.html">プライバシー・外部送信について</a></p>
+  <p><a href="https://food.japan-facilities.com/privacy.html">プライバシー・外部送信について</a></p>
 </body>
 </html>

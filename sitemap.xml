@@ -1,45 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Google Search Console に登録するサイトマップ。
-  送信先 URL: https://gl20percentclub.github.io/japan-food-facilities/sitemap.xml
+  Google Search Console に登録するサイトマップ。有効化後の送信先 URL:
+  https://food.japan-facilities.com/sitemap.xml
 
-  robots.txt は置いていない。このサイトは gl20percentclub.github.io のサブパスで
-  配信されており、robots.txt はドメイン直下（gl20percentclub.github.io/robots.txt）しか
-  参照されないため、サブパスに置いても読まれない。サイトマップは Search Console から
-  直接送信する。
+  gh-pages 側の全ページがリダイレクトだけのスタブになるため、このサイトマップ自体は
+  gh-pages 側の Search Console からは意味を持たなくなる。新ドメイン側の Search Console に
+  登録するサイトマップとして、新ドメインの URL で作ってある（有効化の手順は
+  redirect-stubs/README.md を参照。新ドメイン側の Search Console 登録は別タスク）。
 
-  ページを追加・削除したらこのファイルも更新すること。
-  scripts/site-analytics.test.js が site/*.html との網羅性を検査しているので、
-  書き忘れるとユニットテストが落ちる。
+  attribution.html は private リポジトリが生成する成果物のため、このサイトマップの
+  対象からは外している（新ドメイン側での扱いは private リポジトリ側の判断）。
 
   lastmod は入れていない。手で更新すると必ず実態とずれるため、
   更新日の申告はせずクローラーの判断に任せる。
-  noindex のページ（playground.html: map.html へのリダイレクト）は載せない。
+  noindex のページ（旧 playground.html 相当）は載せない。
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- トップ（LP）。index.html ではなくディレクトリ URL を正規とする -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/</loc>
+    <loc>https://food.japan-facilities.com/</loc>
     <priority>1.0</priority>
   </url>
   <!-- 地図ページ -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/map.html</loc>
+    <loc>https://food.japan-facilities.com/map.html</loc>
     <priority>0.8</priority>
   </url>
   <!-- 座標の品質（データの読み方の解説） -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/coord-quality.html</loc>
+    <loc>https://food.japan-facilities.com/coord-quality.html</loc>
     <priority>0.6</priority>
   </url>
-  <!-- 出典・ライセンス一覧（自動生成ページ） -->
+  <!-- 出典・ライセンス一覧（自動生成ページ。private リポジトリ側の扱いに従う） -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/attribution.html</loc>
+    <loc>https://food.japan-facilities.com/attribution.html</loc>
     <priority>0.6</priority>
   </url>
   <!-- プライバシー・外部送信について -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/privacy.html</loc>
+    <loc>https://food.japan-facilities.com/privacy.html</loc>
     <priority>0.3</priority>
   </url>
 </urlset>
