@@ -23,6 +23,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
 import * as yaml from 'js-yaml';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -236,6 +237,48 @@ assert(
   s3DeployRunText.includes('aws cloudfront create-invalidation'),
   'deploy-s3.yml: 配信後に CloudFront invalidation を実行している',
 );
+
+// --- invalidation が /api/* を巻き込まない ---
+// この distribution は /api/* も同じ CloudFront から配信しており（DataBucket、
+// 390MB）、--paths "/*" は api/* にも一致してしまう。site のデプロイと api の
+// 鮮度は無関係なので、無関係なキャッシュ破棄でオリジンへの不要なリクエストを
+// 誘発したくない。素の "/*" を使っていないことをまず固定する。
+const invalidateStep = s3DeploySteps.find((step) => (step.run ?? '').includes('create-invalidation'));
+assert(!!invalidateStep, 'deploy-s3.yml: CloudFront invalidation ステップが見つかる');
+const invalidateRun = invalidateStep?.run ?? '';
+assert(
+  !/--paths\s+["']\/\*["']/.test(invalidateRun),
+  'deploy-s3.yml: invalidation の --paths に素の "/*" を使っていない（api/* を巻き込むため）',
+);
+
+// --- invalidation パスは site/ 配下の実ファイルから動的に列挙している ---
+// 列挙ロジック（変数代入の行）だけを実際に実行し、結果に /api 配下が絶対に
+// 含まれないことを実測する（api/ は site/ の外の別ディレクトリなので、site/ の
+// 中だけを見て列挙する限り構造的に混ざりようがない、という前提そのものを検証する）。
+const pathsAssignment = invalidateRun.match(/^\s*([A-Z_]+)=\$\((.+)\)\s*$/m);
+assert(!!pathsAssignment, 'deploy-s3.yml: invalidation パスを動的に列挙する代入行がある');
+if (pathsAssignment) {
+  const [, varName, subshell] = pathsAssignment;
+  const output = execSync(subshell, { cwd: ROOT, shell: '/bin/bash', encoding: 'utf8' });
+  const computedPaths = output.split('\n').filter((line) => line.trim() !== '');
+  assert(computedPaths.length > 0, `deploy-s3.yml: ${varName} が1件以上のパスを列挙する（実測: ${computedPaths.length}件）`);
+  assert(
+    computedPaths.every((p) => !p.startsWith('/api')),
+    `deploy-s3.yml: ${varName} の列挙結果に /api 配下が含まれない（実測: ${computedPaths.join(', ')}）`,
+  );
+  assert(
+    computedPaths.includes('/index.html'),
+    `deploy-s3.yml: ${varName} の列挙結果に /index.html が含まれる`,
+  );
+  assert(
+    !computedPaths.includes('/_headers'),
+    `deploy-s3.yml: ${varName} の列挙結果に /_headers が含まれない（配信していないため）`,
+  );
+  assert(
+    invalidateRun.includes(`--paths "/" $${varName}`) || invalidateRun.includes(`--paths "/" $\{${varName}}`),
+    `deploy-s3.yml: --paths が "/"（ルート）と ${varName} の両方を渡している`,
+  );
+}
 
 // --- aws s3 sync を使っている ---
 assert(/aws s3 sync/.test(s3DeployRunText), 'deploy-s3.yml: aws s3 sync を使っている');

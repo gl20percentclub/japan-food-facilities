@@ -124,11 +124,26 @@ jobs:
             --content-type "application/xml; charset=utf-8" \
             --cache-control "public, max-age=60"
 
-      # 5回の sync はいずれも S3 上の反映が終わっているため、最後に1回だけ全体を
-      # invalidate する（sync ごとに invalidation すると同じパスを何度も無効化して
-      # 無駄になる）。
+      # 5回の sync はいずれも S3 上の反映が終わっているため、最後に1回だけ invalidate
+      # する（sync ごとに invalidation すると同じパスを何度も無効化して無駄になる）。
+      #
+      # --paths "/*" は使わない。この distribution は /api/* も同じ CloudFront から
+      # 配信しており、"/*" だと api/*（390MB の配信データ、DataBucket）のキャッシュ
+      # まで巻き込んで無効化してしまう。site のデプロイと api の鮮度は無関係なので、
+      # 無関係なキャッシュ破棄でオリジン（DataBucket）への不要なリクエストを
+      # 誘発したくない。
+      #
+      # 代わりに site/ 配下の実ファイルだけを動的に列挙して --paths に渡す。
+      # site/ にサブディレクトリは無いが、find で列挙しているため将来ページが
+      # 増えても追従できる。列挙元が site/ の中に閉じている（api/ は site/ の外の
+      # 別ディレクトリ）ため、この結果に /api/... が混ざることは構造的に無い。
+      # _headers は配信していないので列挙対象からも除外する。
       - name: Invalidate CloudFront cache
         run: |
+          INVALIDATION_PATHS=$(cd site && find . -type f ! -name '_headers' | sed 's/^\.//')
+          # shellcheck disable=SC2086 # --paths は複数値を別々の引数として受け取るため、
+          # ここでの単語分割は意図通り（"$INVALIDATION_PATHS" と引用符で囲むと
+          # 改行区切りのリスト全体が1個の引数になり、--paths が1件しか渡されなくなる）。
           aws cloudfront create-invalidation \
             --distribution-id "${{ env.CLOUDFRONT_DISTRIBUTION_ID }}" \
-            --paths "/*"
+            --paths "/" $INVALIDATION_PATHS
