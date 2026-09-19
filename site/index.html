@@ -13,6 +13,16 @@
   <meta property="og:url" content="https://gl20percentclub.github.io/japan-food-facilities/">
   <meta name="twitter:card" content="summary">
 
+  <!-- Google Search Console の所有権確認。
+       gh-pages への配信は keep_files: true のため、一度置いた HTML 確認ファイルは
+       あとから消しても gh-pages 上に残り続ける。後始末できるよう meta タグ方式を使う。
+       Search Console でプロパティを登録したら content の値を差し替える（docs/ANALYTICS.md）。 -->
+  <meta name="google-site-verification" content="GOOGLE_SITE_VERIFICATION_TOKEN">
+
+  <!-- アクセス解析（GA4）。測定IDと発火条件は analytics.js に集約している。
+       外部送信の内容は privacy.html で公表している。 -->
+  <script src="./analytics.js"></script>
+
   <style>
     :root {
       --accent: #e8563f;
@@ -389,6 +399,7 @@ print(naha[['name', 'address', 'lat', 'lng']].head())</code></pre>
         <a href="./map.html">地図</a> ·
         <a href="./coord-quality.html">座標の品質</a> ·
         <a href="./attribution.html">出典・ライセンス</a> ·
+        <a href="./privacy.html">プライバシー</a> ·
         <a href="#availability">提供条件</a> ·
         <a href="https://github.com/gl20percentclub/japan-food-facilities">GitHub</a> ·
         <a href="https://github.com/gl20percentclub/japan-food-facilities/issues">Issues</a>

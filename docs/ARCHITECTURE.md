@@ -147,3 +147,6 @@ private リポジトリ側にも同じ `tiles.js` があり同一ファイルの
 | LP・地図の見た目を変える | `site/index.html` / `site/map.html` |
 | 出典表示ページの内容を変える | private リポジトリの生成スクリプト（`attribution.html` はこのリポジトリでは編集しない） |
 | AI向けドキュメントを変える | README 本文は `README.md`（`llms*.txt` は private リポジトリが生成する成果物） |
+| アクセス解析の測定IDを差し替える | `site/analytics.js`（手順は [ANALYTICS.md](ANALYTICS.md)） |
+| 外部送信の公表内容を変える | `site/privacy.html`（送信内容を変えたら必ず追従する） |
+| ページを追加する | `site/` に置く（`site/sitemap.xml` への追記も必要） |
