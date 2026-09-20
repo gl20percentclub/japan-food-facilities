@@ -11,7 +11,10 @@
 // 一方で、旧ドメインへの言及がすべて誤りというわけではない。次の箇所は意図的に
 // 残している（機械的な一括置換をしなかった理由はコミットメッセージ・報告を参照）。
 //   - redirect-stubs/ 以下: リダイレクト先の説明・動作確認手順そのものが旧ドメインの話
-//   - docs/ARCHITECTURE.md: 構成図が GitHub Pages という配信先そのものの実ドメイン名を記載
+//   - AGENTS.md・docs/ARCHITECTURE.md: GitHub Pages が本番ではなくリダイレクト専用サイト
+//     であることの説明で、その配信先そのものの実ドメイン名を記載している
+//   - scripts/architecture-docs.test.js: 上記2ファイルの記述を検証するテスト自身。
+//     コメントで同じ説明を再掲しているため当然含まれる
 //   - .github/workflows/pages.yml: gh-pages がリダイレクト専用になった経緯のコメント
 //   - site/attribution.html・site/llms.txt・site/llms-full.txt: private リポジトリ
 //     （japan-facilities-crawler）が生成して push する成果物。このリポジトリでは
@@ -34,7 +37,9 @@ const ALLOWED_FILES = new Set([
   'redirect-stubs/privacy.html',
   'redirect-stubs/404.html',
   'redirect-stubs/sitemap.xml',
+  'AGENTS.md',
   'docs/ARCHITECTURE.md',
+  'scripts/architecture-docs.test.js',
   '.github/workflows/pages.yml',
   // private リポジトリが生成して push する成果物。直接編集しない方針（AGENTS.md）。
   'site/attribution.html',

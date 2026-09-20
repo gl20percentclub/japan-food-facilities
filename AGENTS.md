@@ -5,8 +5,10 @@ AI コーディングエージェント（Claude Code / Codex 等）向けのガ
 **全件CSV**・**都道府県別CSV**・**ベクトルタイル** の3形式で配信するオープンデータプロジェクト。
 現在は無償で提供しているが、提供条件は予告なく変更しうる（継続的な提供は有償サポートで対応）。
 サイト・README・llms.txt で「無料」「登録不要」「レート制限なし」といった無条件の提供を約束しない。
-静的ページは GitHub Pages、データ（`api/`）は S3 + CloudFront（独自ドメイン
-`food.japan-facilities.com`）から配信する。
+正規の配信先は **S3 + CloudFront（独自ドメイン `food.japan-facilities.com`）** で、静的ページ
+（`site/`）・データ（`api/`）とも実質ここから配信される。GitHub Pages
+（`gl20percentclub.github.io`）は本番ではなく、新ドメインへのリダイレクト専用サイトとして
+残している（詳細は後述の「配信の仕組み」を参照）。
 
 **クロール処理（取得・正規化・配信物の生成）は private リポジトリ
 [japan-facilities-crawler](https://github.com/gl20percentclub/japan-facilities-crawler) が持つ。**
@@ -56,7 +58,9 @@ npm run test:unit       # site/ の整合性テストと配信ワークフロー
 ## リポジトリ構成
 
 ```
-site/                   # gh-pages に配信する静的サイト（ここの中身がそのまま公開される）
+site/                   # 公開サイト。deploy-s3.yml がそのまま food.japan-facilities.com へ配信する
+                        # （GitHub Pages 側は redirect-stubs/ で上書きしたコピーを配信するだけで
+                        # site/ の内容は反映されない。詳細は後述の「配信の仕組み」）
 site/index.html         # LP
 site/map.html           # プレビュー地図
 site/playground.html    # map.html へのリダイレクトだけの薄いページ
@@ -83,30 +87,51 @@ api/                    # 配信物。このリポジトリには存在しない
 
 ## 配信の仕組み
 
-- **データ（`api/`）は S3 + CloudFront で配信**する。ベース URL は
-  `https://food.japan-facilities.com`（CORS 全オリジン許可済み）。
-  クロールと S3 への配信は別リポジトリ
+配信ワークフローは2本ある。**どちらも `main` への push で自動的に走る**ので、
+`site/` を編集して push すれば意識せず両方に反映されるが、それぞれの役割は全く違う。
+
+- **`.github/workflows/deploy-s3.yml`（本番・正規ドメイン）**: `site/**` の変更を検知し、
+  コミット済みの `site/` を**そのまま**（再生成なし）`aws s3 sync` で S3 バケットへ同期して
+  CloudFront のキャッシュを無効化する。配信先は独自ドメイン
+  `https://food.japan-facilities.com/` で、静的ページ（LP・地図・出典・llms.txt 等）も
+  データ（`api/`）もここが正規の配信元。データ（`api/`）自体は別リポジトリ
   [japan-facilities-crawler](https://github.com/gl20percentclub/japan-facilities-crawler)
-  の Fargate タスクが毎週月曜 18:00 UTC に実行する。このリポジトリでは `api/` を生成も
-  管理もしない（結合CSV は 430MB あり、GitHub の 100MB 制限で Git 配信できないため）
-- `pages.yml`: 静的ページ（LP・地図・出典・llms.txt）の変更を main への push で
-  gh-pages へ反映する。**コミット済みの `site/` をそのまま配信する（配信前の再生成はしない）。**
-  `site/attribution.html` / `llms.txt` / `llms-full.txt` は private リポジトリが生成して
-  このリポジトリへ push した成果物であり、pages.yml はそれをそのまま配信するだけ
-- gh-pages へ配信するワークフローは `pages.yml` **1本だけ**。gh-pages へデータを配信して
+  の Fargate タスクが毎週月曜 18:00 UTC に直接 S3 へ配信する（このリポジトリでは `api/` を
+  生成も管理もしない。結合CSV は 430MB あり GitHub の 100MB 制限で Git 配信できないため）。
+- **`.github/workflows/pages.yml`（GitHub Pages・新ドメインへのリダイレクト専用）**:
+  `https://gl20percentclub.github.io/japan-food-facilities/`（旧ドメイン）は本番ではない。
+  `site/**` または `redirect-stubs/**` の変更で、`site/` のコピーを作り、
+  `index.html` / `map.html` / `playground.html` / `coord-quality.html` / `privacy.html` /
+  `404.html` / `sitemap.xml` の7ファイルだけを `redirect-stubs/`（meta refresh +
+  canonical で新ドメインへ転送するリダイレクトページ）の内容で**上書きしたコピー**を
+  gh-pages へ配信する。**`site/` 自体は書き換えない**（`deploy-s3.yml` の配信元と共有して
+  いるため、書き換えると新ドメイン自身がリダイレクトに置き換わる無限リダイレクトになる）。
+  `attribution.html` / `llms.txt` / `llms-full.txt` / `analytics.js` / `_headers` は
+  上書き対象外で `site/` の内容がそのまま gh-pages にも通る（詳細は `redirect-stubs/README.md`）。
+
+**編集するときに注意すべき点はここ:** `site/index.html` や `site/map.html` を編集して push
+しても、**GitHub Pages 側にはその内容は反映されない**（上記7ファイルは常に
+`redirect-stubs/` の内容で上書きされるため）。反映先は新ドメイン
+（`https://food.japan-facilities.com/`）だけ。リダイレクトページ自体の文言を変えたいときは
+`redirect-stubs/` を編集する（このリポジトリの現行タスクでは対象外）。
+
+- 配信ワークフローは `deploy-s3.yml` と `pages.yml` の2本だけ。gh-pages へデータを配信して
   いた旧 `crawl.yml` は廃止した（週次クロールは Fargate 側に一本化。復活していないことを
   `scripts/workflows.test.js` で固定している）。生成物の生成元とのドリフトを自己修復していた
   旧 `generated-docs.yml` も、生成元が private リポジトリへ移ったことで対象が無くなったため撤去した
   （復活していないことも `scripts/workflows.test.js` で固定している）
-- 配信元は `site/` だけ（`publish_dir: site`）。`site/` の中身が gh-pages のルートに
-  置かれるため、公開 URL は `/index.html`・`/map.html`・`/llms.txt` のまま。
-  ページを追加するときは `site/` に置く（`pages.yml` の paths は `site/**` で一括）
-- かつては `publish_dir: .` で、README・docs/・config/・package.json まで配信されていた。
+- `pages.yml` の配信元（`publish_dir`）は `site/` を一時的にコピーして作る
+  `gh-pages-dist/`（Git 管理対象外）であって、`site/` 自体でもリポジトリのルートでもない。
+  かつては `publish_dir: .` で、README・docs/・config/・package.json まで配信されていた。
   さらに `.gitignore` ごと配信されると配信先の `git add --all` で `api/` が無視され、
   gh-pages のデータが全消えする事故があった。`site/` には `.gitignore` も
-  `node_modules` も無いため、この危険は構造的に消えている（workflows.test.js で固定）
+  `node_modules` も無いため、この危険は構造的に消えている（`scripts/workflows.test.js` で固定）
 - `pages.yml` は `keep_files: true` のためファイル削除が反映されない。ページを削除・リネーム
   したときは gh-pages 上の旧ファイルを手動で消す
+- `deploy-s3.yml` は GitHub OIDC（`assumeRoleWithWebIdentity`）で認証し、アクセスキーは
+  使わない。`/api/*`（別バケット、390MB）への書き込み権限は IAM ロール側で明示的に Deny
+  されており、CloudFront invalidation も `/api/*` を巻き込まないよう `site/` 配下の実ファイルを
+  動的に列挙して渡す（構成は `scripts/workflows.test.js` で固定している）
 
 ## クロール処理の所有権（private リポジトリへ移行済み）
 

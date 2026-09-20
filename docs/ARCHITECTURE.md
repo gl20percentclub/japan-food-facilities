@@ -10,6 +10,7 @@ flowchart TB
   subgraph pub["このリポジトリ（公開・サイトとデータの窓口）"]
     readme["README.md"]
     site["site/<br/>静的サイト"]
+    stubs["redirect-stubs/<br/>リダイレクトページの内容"]
   end
 
   subgraph crawler["japan-facilities-crawler（private / Fargate）"]
@@ -19,8 +20,8 @@ flowchart TB
   end
 
   subgraph delivery["配信先"]
-    s3["S3 + CloudFront<br/>food.japan-facilities.com"]
-    ghp["GitHub Pages<br/>gl20percentclub.github.io"]
+    s3["S3 + CloudFront（正規ドメイン）<br/>food.japan-facilities.com<br/>site/ も api/ もここが本番"]
+    ghp["GitHub Pages（リダイレクト専用）<br/>gl20percentclub.github.io<br/>新ドメインへ転送するだけ"]
   end
 
   yaml --> run
@@ -29,10 +30,12 @@ flowchart TB
   run -->|"README の STATS ブロック<br/>attribution.html / llms*.txt"| readme
   run --> site
 
-  site -->|"pages.yml（再生成なし）"| ghp
+  site -->|"deploy-s3.yml（再生成なし・そのまま同期）"| s3
+  site -->|"pages.yml（7ファイルだけ<br/>redirect-stubsで上書きしたコピー）"| ghp
+  stubs -->|"pages.yml"| ghp
 ```
 
-ポイントは2つです。
+ポイントは3つです。
 
 1. **クロール処理はこのリポジトリには無い。** 取得ノウハウ（自治体・省庁ごとの正規表現や
    正規化ロジック）が競争優位性のため、private リポジトリ
@@ -43,7 +46,12 @@ flowchart TB
 2. **このリポジトリが持つのは公開サイト（`site/`）とデータの窓口（README・ドキュメント）だけ。**
    `site/attribution.html` / `site/llms.txt` / `site/llms-full.txt` は private リポジトリの
    Fargate タスクが生成してこのリポジトリへ push する**成果物**で、直接編集しない
-3. **データとページで配信先が違う。** データは S3 + CloudFront、静的ページは GitHub Pages です。
+3. **正規の配信先は S3 + CloudFront（`food.japan-facilities.com`）1つだけ。** データ
+   （`api/`）だけでなく静的ページ（`site/`）もここが本番。GitHub Pages
+   （`gl20percentclub.github.io`）は本番ではなく、新ドメインへの**リダイレクト専用サイト**
+   として残している（旧ドメインを知っている人・検索エンジンを新ドメインへ誘導するため）。
+   `site/index.html` や `site/map.html` を編集しても GitHub Pages 側には反映されない
+   （常に `redirect-stubs/` の内容で上書きされるため）。詳しくは後述の「ワークフロー」を参照
 
 ## ディレクトリ構成
 
@@ -53,7 +61,7 @@ japan-food-facilities/
 ├── CONTRIBUTING.md        # 貢献の手順
 ├── AGENTS.md              # AIコーディングエージェント向けのガイド
 │
-├── site/                  # gh-pages に配信する静的サイト（中身がそのまま公開される）
+├── site/                  # 公開サイト。deploy-s3.yml がそのまま food.japan-facilities.com へ配信する
 │   ├── index.html
 │   ├── map.html
 │   ├── playground.html    # map.html へのリダイレクト
@@ -61,6 +69,9 @@ japan-food-facilities/
 │   ├── llms.txt           # 同上
 │   ├── llms-full.txt      # 同上
 │   └── _headers
+│
+├── redirect-stubs/        # GitHub Pages（旧ドメイン）用のリダイレクトページ。site/ とは別内容
+│                          # （pages.yml がデプロイ直前に site/ のコピーへ上書きする）
 │
 ├── docs/
 │   ├── ARCHITECTURE.md    # このファイル
@@ -119,22 +130,32 @@ private リポジトリ側にも同じ `tiles.js` があり同一ファイルの
 | ファイル | 発火 | 役割 |
 | --- | --- | --- |
 | `ci.yml` | PR / main への push | `npm run test:unit`（site/ の整合性テスト・配信ワークフロー設定テスト）を実行 |
-| `pages.yml` | main への push（`site/**` 等） | `site/` をそのまま gh-pages へ配信（配信前の再生成はしない） |
+| `deploy-s3.yml` | main への push（`site/**` 等） | **正規の配信。** `site/` をそのまま（再生成なし）`aws s3 sync` で S3 + CloudFront（`food.japan-facilities.com`）へ同期する |
+| `pages.yml` | main への push（`site/**` / `redirect-stubs/**`） | GitHub Pages（旧ドメイン）へのリダイレクト配信。`site/` のコピーを作り、`index.html` 等7ファイルだけ `redirect-stubs/` の内容で上書きしてから gh-pages へ配信する（`site/` 自体は書き換えない） |
 
 かつては `pages.yml` が配信前に `attribution.html` / `llms*.txt` を再生成し、
 生成物のドリフトを自己修復する `generated-docs.yml` も存在したが、生成元が private
 リポジトリへ移行したことでこのリポジトリ側では再生成できなくなったため、いずれも撤去した。
 
 配信ワークフローの設定は `scripts/workflows.test.js` が固定しています。
-`pages.yml` / `ci.yml` を変更したら、このテストも必ず確認してください。
+`deploy-s3.yml` / `pages.yml` / `ci.yml` を変更したら、このテストも必ず確認してください。
 
 ### 配信の注意点
 
-- `pages.yml` の配信元は `site/` だけです。`site/` の中身が gh-pages のルートに置かれるため、
-  公開 URL は `/index.html`・`/map.html`・`/llms.txt` になります。ページを増やすときは
-  `site/` に置けば `paths: site/**` で自動的に拾われます。
-- `keep_files: true` のため**ファイル削除は反映されません**。ページを削除・リネームしたときは
-  gh-pages 上の旧ファイルを手動で消してください。
+- **本番・正規ドメインは `https://food.japan-facilities.com/`（S3 + CloudFront、
+  `deploy-s3.yml`）です。** `site/` を編集して push すると、公開 URL は
+  `/index.html`・`/map.html`・`/llms.txt` のままこのドメインに反映されます。
+  ページを増やすときは `site/` に置けば `paths: site/**` で自動的に拾われます。
+- **GitHub Pages（`https://gl20percentclub.github.io/japan-food-facilities/`）は
+  本番ではありません。** 新ドメインへの `<meta http-equiv="refresh">` リダイレクトだけを
+  配信するサイトで、`pages.yml` が `index.html` / `map.html` / `playground.html` /
+  `coord-quality.html` / `privacy.html` / `404.html` / `sitemap.xml` の7ファイルを
+  `redirect-stubs/` の内容で常に上書きします。**この7ファイルは `site/` を編集しても
+  GitHub Pages 側には反映されません。** `attribution.html` / `llms.txt` /
+  `llms-full.txt` / `analytics.js` / `_headers` は上書き対象外で `site/` の内容が
+  そのまま通ります（詳細は `redirect-stubs/README.md`）。
+- `pages.yml` の `keep_files: true` のため**ファイル削除は反映されません**。
+  ページを削除・リネームしたときは gh-pages 上の旧ファイルを手動で消してください。
 
 ## やりたいこと別・触るファイル
 
