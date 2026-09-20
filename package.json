@@ -2,7 +2,7 @@
   "name": "japan-food-facilities-data",
   "type": "module",
   "scripts": {
-    "test:unit": "node scripts/map-filter.test.js && node scripts/workflows.test.js && node scripts/site-analytics.test.js && node scripts/redirect-stubs.test.js && node scripts/readme-license.test.js",
+    "test:unit": "node scripts/map-filter.test.js && node scripts/workflows.test.js && node scripts/site-analytics.test.js && node scripts/redirect-stubs.test.js && node scripts/readme-license.test.js && node scripts/domain-links.test.js",
     "test": "npm run test:unit"
   },
   "dependencies": {

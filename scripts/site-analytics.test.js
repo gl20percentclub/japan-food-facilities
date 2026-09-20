@@ -25,8 +25,8 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = path.join(ROOT, 'site');
 
-// 公開サイトの配信 URL の基点（pages.yml が site/ を gh-pages のルートへ出す）。
-const BASE_URL = 'https://gl20percentclub.github.io/japan-food-facilities/';
+// 公開サイトの配信 URL の基点（deploy-s3.yml が site/ を新ドメインのルートへ同期する）。
+const BASE_URL = 'https://food.japan-facilities.com/';
 
 // 計測タグ（analytics.js）を読み込むページ。生成物ではない素の HTML だけを対象にする。
 const ANALYTICS_PAGES = ['index.html', 'map.html', 'playground.html', 'coord-quality.html', 'privacy.html'];
