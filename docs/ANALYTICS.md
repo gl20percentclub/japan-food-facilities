@@ -22,16 +22,16 @@
 
 ## 差し替えが必要なプレースホルダ
 
-現時点では GA4 プロパティも Search Console のプロパティも作っていないため、
-次の 2 つがプレースホルダのまま入っている。**どちらも差し替えるまでは無害**
-（測定タグは発火せず、確認用 meta タグは Search Console 側が照合しなければ意味を持たない）。
+GA4 側は `food.japan-facilities.com` プロパティ（測定ID `G-2EL4MB98BL`）を作成済みで、
+`site/analytics.js` の `MEASUREMENT_ID` にも反映済み。
+Search Console のプロパティは未作成のため、次の 1 つがプレースホルダのまま入っている。
+**差し替えるまでは無害**（確認用 meta タグは Search Console 側が照合しなければ意味を持たない）。
 
 | プレースホルダ | 場所 | 差し替える値 |
 | --- | --- | --- |
-| `G-XXXXXXXXXX` | `site/analytics.js` の `MEASUREMENT_ID` | GA4 の測定ID |
 | `GOOGLE_SITE_VERIFICATION_TOKEN` | `site/index.html` の `google-site-verification` meta タグ | Search Console が発行する確認用トークン |
 
-### 1. GA4 の測定IDを入れる
+### 1. GA4 の測定IDを入れる（完了）
 
 1. [Google アナリティクス](https://analytics.google.com/) でプロパティとウェブ
    データストリーム（URL は `https://gl20percentclub.github.io/japan-food-facilities/`）
