@@ -186,9 +186,12 @@ for (const file of GENERATED_FILES) {
 // そのため生成元テンプレート側の検証はこのリポジトリからは行わない。
 
 // --- Search Console の所有権確認は meta タグ方式 ---
+const verificationTag = indexHtml.match(/<meta\s+name="google-site-verification"\s+content="([^"]+)">/);
+assert(verificationTag !== null, 'site/index.html: google-site-verification の meta タグがある');
+// プレースホルダのまま配信すると所有権確認が失敗するので、実トークンが入っていることを固定する。
 assert(
-  /<meta\s+name="google-site-verification"\s+content="[^"]+">/.test(indexHtml),
-  'site/index.html: google-site-verification の meta タグがある',
+  verificationTag?.[1] !== 'GOOGLE_SITE_VERIFICATION_TOKEN',
+  'site/index.html: google-site-verification の content がプレースホルダのままではない',
 );
 // keep_files: true のため HTML ファイル方式の確認ファイルは後から消せない。
 // （google1234abcd.html のような名前で site/ 直下に置く方式）

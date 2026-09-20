@@ -24,12 +24,9 @@
 
 GA4 側は `food.japan-facilities.com` プロパティ（測定ID `G-2EL4MB98BL`）を作成済みで、
 `site/analytics.js` の `MEASUREMENT_ID` にも反映済み。
-Search Console のプロパティは未作成のため、次の 1 つがプレースホルダのまま入っている。
-**差し替えるまでは無害**（確認用 meta タグは Search Console 側が照合しなければ意味を持たない）。
-
-| プレースホルダ | 場所 | 差し替える値 |
-| --- | --- | --- |
-| `GOOGLE_SITE_VERIFICATION_TOKEN` | `site/index.html` の `google-site-verification` meta タグ | Search Console が発行する確認用トークン |
+Search Console 側も `https://food.japan-facilities.com/` の URL プレフィックス
+プロパティを作成し、`site/index.html` の `google-site-verification` meta タグに
+確認用トークンを反映済み。プレースホルダは残っていない。
 
 ### 1. GA4 の測定IDを入れる（完了）
 
@@ -49,17 +46,24 @@ Search Console のプロパティは未作成のため、次の 1 つがプレ�
 4. main へ push すると `pages.yml` が `site/**` の変更を拾って配信する。
 5. 配信後、GA4 のリアルタイムレポートにアクセスが出ることを確認する。
 
-### 2. Search Console の所有権確認
+### 2. Search Console の所有権確認（完了）
 
 **HTML ファイル方式は使わない。** `pages.yml` は `keep_files: true` で配信して
 おり、gh-pages 上のファイル削除が反映されない。確認ファイルを置くと後から消せない
 ゴミとして残り続けるため、**meta タグ方式**を使う。
 
+「Google アナリティクス」方式（GA4 のトラッキングコードから照合する方式）は使えない。
+`site/analytics.js` は実行時に `<script>` タグを動的挿入して gtag.js を読み込む作りで
+あり、JavaScript を実行しない Search Console の確認botからはこの挿入が見えず、
+「トラッキング コードが見つかりません」で失敗する。
+
 1. [Search Console](https://search.google.com/search-console) で
    **URL プレフィックス** プロパティとして
-   `https://gl20percentclub.github.io/japan-food-facilities/` を追加する。
+   `https://food.japan-facilities.com/` を追加する。
 2. 所有権の確認方法で「HTML タグ」を選び、表示された
    `<meta name="google-site-verification" content="...">` の `content` の値をコピーする。
+   画面表示だと似た文字（`O`（大文字オー）と `0`（ゼロ）など）を見分けにくいことがある
+   ため、DOM の実値をコピーする（目で読み直して転記しない）。
 3. `site/index.html` の次の meta タグの `content` を差し替える。
 
    ```html
@@ -67,7 +71,8 @@ Search Console のプロパティは未作成のため、次の 1 つがプレ�
    ```
 
 4. main へ push して配信されたあと、Search Console で「確認」を押す。
-5. 確認後も meta タグは**消さない**（消すと所有権が失効する）。
+5. 確認後も meta タグは**消さない**（消すと所有権が失効する。Search Console は
+   所有権を定期的に再確認しており、削除するとその時点で失効する）。
 
 ### 3. サイトマップの登録
 
