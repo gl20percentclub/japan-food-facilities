@@ -9,12 +9,12 @@
 [![GitHub Issues](https://img.shields.io/github/issues/gl20percentclub/japan-food-facilities)](https://github.com/gl20percentclub/japan-food-facilities/issues)
 [![Weekly Crawl](https://img.shields.io/badge/更新-毎週自動-blue)](docs/DATA.md#更新頻度)
 
-[公式サイト](https://gl20percentclub.github.io/japan-food-facilities/) ·
-[地図で見る](https://gl20percentclub.github.io/japan-food-facilities/map.html) ·
+[公式サイト](https://food.japan-facilities.com/) ·
+[地図で見る](https://food.japan-facilities.com/map.html) ·
 [CSVをダウンロード](https://food.japan-facilities.com/api/facilities-all.csv) ·
 [データの詳細](docs/DATA.md) ·
 [収録状況](docs/COVERAGE.md) ·
-[出典・ライセンス](https://gl20percentclub.github.io/japan-food-facilities/attribution.html)
+[出典・ライセンス](https://food.japan-facilities.com/attribution.html)
 
 </div>
 
@@ -72,7 +72,7 @@ map.addSource("facilities", {
   minzoom: 3,
   maxzoom: 12,
   attribution:
-    '出典：<a href="https://gl20percentclub.github.io/japan-food-facilities/">Japan Food Facilities</a>（<a href="https://gl20percentclub.github.io/japan-food-facilities/attribution.html" target=">自治体・厚生労働省が公開する食品営業許可オープンデータを加工して作成</a>）',
+    '出典：<a href="https://food.japan-facilities.com/">Japan Food Facilities</a>（<a href="https://food.japan-facilities.com/attribution.html" target=">自治体・厚生労働省が公開する食品営業許可オープンデータを加工して作成</a>）',
 });
 
 map.addLayer({
@@ -89,7 +89,7 @@ map.addLayer({
 
 詳細は[metadata.json](https://food.japan-facilities.com/api/tiles/metadata.json)を参照してください。
 
-収録データは[地図ページ](https://gl20percentclub.github.io/japan-food-facilities/map.html)でも確認できます。
+収録データは[地図ページ](https://food.japan-facilities.com/map.html)でも確認できます。
 
 ### AIエージェントから使う
 
@@ -97,8 +97,8 @@ Claude CodeやCodexなどに、次のURLを渡してください。
 
 | ファイル          | URL                                                                   |
 | ------------- | --------------------------------------------------------------------- |
-| llms.txt      | https://gl20percentclub.github.io/japan-food-facilities/llms.txt      |
-| llms-full.txt | https://gl20percentclub.github.io/japan-food-facilities/llms-full.txt |
+| llms.txt      | https://food.japan-facilities.com/llms.txt      |
+| llms-full.txt | https://food.japan-facilities.com/llms-full.txt |
 
 ## 主なデータ項目
 
@@ -127,7 +127,7 @@ Claude CodeやCodexなどに、次のURLを渡してください。
 | ------------------------------------------------- | --------------------------------------------------------- |
 | [収録範囲](docs/DATA.md#収録範囲)                     | 全国1,741市区町村のうち1,727市区町村（99%）をカバー          |
 | [緯度経度](docs/DATA.md#緯度経度)                   | 元データに座標がない場合は住所からジオコーディング。精度は`geocoding_level`で確認 |
-| [座標の品質](https://gl20percentclub.github.io/japan-food-facilities/coord-quality.html) | 施設の位置として信用できない座標は除去済み。レコード自体は残る（図解つき解説） |
+| [座標の品質](https://food.japan-facilities.com/coord-quality.html) | 施設の位置として信用できない座標は除去済み。レコード自体は残る（図解つき解説） |
 | [鮮度と網羅性](docs/DATA.md#鮮度と網羅性)           | 廃業済みや許可期限切れの施設が含まれる場合がある            |
 | [更新頻度](docs/DATA.md#更新頻度)                   | 毎週月曜18:00 UTC（日本時間 火曜3:00）に自動更新。URLは不変 |
 
@@ -138,7 +138,7 @@ Claude CodeやCodexなどに、次のURLを渡してください。
 | 対象          | 条件                  |
 | ----------- | ------------------- |
 | CSV・ベクトルタイル | 各元データのライセンス・利用条件に従う |
-| リポジトリ内のコード  | [MIT License](LICENSE) |
+| リポジトリ内のコード  | MIT License |
 
 本データは、商用・非商用を問わず、アプリ、Webサービス、研究、分析、再配布などに利用できます。
 
@@ -148,7 +148,7 @@ Claude CodeやCodexなどに、次のURLを渡してください。
 出典：Japan Food Facilities
 （自治体・厚生労働省が公開する食品営業許可オープンデータを加工して作成）
 元データの出典・ライセンス一覧：
-https://gl20percentclub.github.io/japan-food-facilities/attribution.html
+https://food.japan-facilities.com/attribution.html
 ```
 
 各レコードの出典とライセンスは、CSVの`sources`列と`licenses`列でも確認できます。

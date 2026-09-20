@@ -16,7 +16,7 @@ AI コーディングエージェント（Claude Code / Codex 等）向けのガ
 
 ## このデータでアプリを作る場合
 
-**まず https://gl20percentclub.github.io/japan-food-facilities/llms-full.txt を読むこと。**
+**まず https://food.japan-facilities.com/llms-full.txt を読むこと。**
 データ仕様・コピペで動く利用例・注意事項がすべてまとまっている。要点だけ挙げる:
 
 - 全件CSV: `https://food.japan-facilities.com/api/facilities-all.csv`
@@ -39,7 +39,7 @@ AI コーディングエージェント（Claude Code / Codex 等）向けのガ
 - 商用・非商用を問わず利用可だが出典表示が必要。ライセンスは元データの提供元ごとに異なる
   （単一ライセンスではないので「CC BY 4.0」と一括で書かない）。出典表示:
   「出典：Japan Food Facilities（各自治体・厚生労働省が公開する食品営業許可オープンデータを加工して作成）」
-  ＋ 出典・ライセンス一覧 `https://gl20percentclub.github.io/japan-food-facilities/attribution.html`
+  ＋ 出典・ライセンス一覧 `https://food.japan-facilities.com/attribution.html`
   地図（ベクトルタイル）では source の `attribution` に指定する
 
 ## 開発コマンド

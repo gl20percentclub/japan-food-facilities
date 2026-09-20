@@ -1,6 +1,6 @@
 # アクセス解析（GA4）と Search Console
 
-公開サイト <https://gl20percentclub.github.io/japan-food-facilities/> の
+公開サイト <https://food.japan-facilities.com/> の
 アクセス解析まわりの構成と、**プレースホルダの差し替え手順**をまとめる。
 
 ## 構成
@@ -31,7 +31,7 @@ Search Console 側も `https://food.japan-facilities.com/` の URL プレフィ�
 ### 1. GA4 の測定IDを入れる（完了）
 
 1. [Google アナリティクス](https://analytics.google.com/) でプロパティとウェブ
-   データストリーム（URL は `https://gl20percentclub.github.io/japan-food-facilities/`）
+   データストリーム（URL は `https://food.japan-facilities.com/`）
    を作成し、`G-` で始まる測定IDを取得する。
 2. `site/analytics.js` の次の行だけを書き換える。
 
@@ -77,11 +77,10 @@ Search Console 側も `https://food.japan-facilities.com/` の URL プレフィ�
 ### 3. サイトマップの登録
 
 配信後、Search Console の「サイトマップ」から
-`https://gl20percentclub.github.io/japan-food-facilities/sitemap.xml` を送信する。
+`https://food.japan-facilities.com/sitemap.xml` を送信する。
 
-`robots.txt` は置いていない。このサイトは `gl20percentclub.github.io` の
-サブパスで配信されており、`robots.txt` はドメイン直下しか参照されないため、
-`site/robots.txt` を置いても読まれない。サイトマップは Search Console から直接送信する。
+`robots.txt` は置いていない。サイトマップは Search Console から直接送信しているため、
+クローラー向けに `robots.txt` でサイトマップの場所を案内する必要がない。
 
 **ページを追加・削除したら `site/sitemap.xml` も更新すること。**
 `scripts/site-analytics.test.js` が `site/*.html` との網羅性を検査しているので、

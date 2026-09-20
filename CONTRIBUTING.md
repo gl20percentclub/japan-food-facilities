@@ -113,10 +113,10 @@ README 本文（STATS ブロック以外）はこのリポジトリで直接編�
 
 ## ライセンス
 
-コントリビューションは、リポジトリ内のコードと同じ [MIT License](LICENSE) の下で
+コントリビューションは、リポジトリ内のコードと同じ MIT License の下で
 提供されたものとみなします。
 
 なお、**配信しているデータ（CSV・ベクトルタイル）は MIT ではなく、各元データの提供元が
 定めるライセンスに従います**。詳細は
-[出典・ライセンス一覧](https://gl20percentclub.github.io/japan-food-facilities/attribution.html)
+[出典・ライセンス一覧](https://food.japan-facilities.com/attribution.html)
 を参照してください。

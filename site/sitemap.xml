@@ -1,12 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Google Search Console に登録するサイトマップ。
-  送信先 URL: https://gl20percentclub.github.io/japan-food-facilities/sitemap.xml
+  送信先 URL: https://food.japan-facilities.com/sitemap.xml
 
-  robots.txt は置いていない。このサイトは gl20percentclub.github.io のサブパスで
-  配信されており、robots.txt はドメイン直下（gl20percentclub.github.io/robots.txt）しか
-  参照されないため、サブパスに置いても読まれない。サイトマップは Search Console から
-  直接送信する。
+  robots.txt は置いていない。サイトマップは Search Console から直接送信しているため、
+  クローラー向けに robots.txt でサイトマップの場所を案内する必要がない。
 
   ページを追加・削除したらこのファイルも更新すること。
   scripts/site-analytics.test.js が site/*.html との網羅性を検査しているので、
@@ -19,27 +17,27 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <!-- トップ（LP）。index.html ではなくディレクトリ URL を正規とする -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/</loc>
+    <loc>https://food.japan-facilities.com/</loc>
     <priority>1.0</priority>
   </url>
   <!-- 地図ページ -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/map.html</loc>
+    <loc>https://food.japan-facilities.com/map.html</loc>
     <priority>0.8</priority>
   </url>
   <!-- 座標の品質（データの読み方の解説） -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/coord-quality.html</loc>
+    <loc>https://food.japan-facilities.com/coord-quality.html</loc>
     <priority>0.6</priority>
   </url>
   <!-- 出典・ライセンス一覧（自動生成ページ） -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/attribution.html</loc>
+    <loc>https://food.japan-facilities.com/attribution.html</loc>
     <priority>0.6</priority>
   </url>
   <!-- プライバシー・外部送信について -->
   <url>
-    <loc>https://gl20percentclub.github.io/japan-food-facilities/privacy.html</loc>
+    <loc>https://food.japan-facilities.com/privacy.html</loc>
     <priority>0.3</priority>
   </url>
 </urlset>
