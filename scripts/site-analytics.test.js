@@ -93,6 +93,15 @@ const ID_LINE = /var MEASUREMENT_ID = '([^']*)';/;
 const currentId = analyticsJs.match(ID_LINE)?.[1];
 assert(currentId !== undefined, 'analytics.js: 測定 ID の定数（MEASUREMENT_ID）がある');
 
+// GA4 プロパティ発行後は実 ID を固定する。うっかりプレースホルダへ戻したり、
+// 打ち間違えて書式が崩れたりしたら、ここで落ちて気付ける（計測タグは無言で
+// 発火を止めるだけなので、コード側の変化を検知する手段がこのテストしかない）。
+assert(currentId !== 'G-XXXXXXXXXX', 'analytics.js: 測定 ID がプレースホルダのままではない');
+assert(
+  /^G-[A-Z0-9]{6,}$/.test(currentId ?? ''),
+  'analytics.js: 測定 ID が GA4 の書式（G- + 英数字）に合致する',
+);
+
 const asShipped = runAnalytics(analyticsJs);
 if (currentId === 'G-XXXXXXXXXX') {
   // まだ GA4 プロパティを作っていない状態。プレースホルダのまま Google へリクエストを
