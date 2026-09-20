@@ -13,11 +13,13 @@
   <meta property="og:url" content="https://gl20percentclub.github.io/japan-food-facilities/">
   <meta name="twitter:card" content="summary">
 
-  <!-- Google Search Console の所有権確認。
-       gh-pages への配信は keep_files: true のため、一度置いた HTML 確認ファイルは
-       あとから消しても gh-pages 上に残り続ける。後始末できるよう meta タグ方式を使う。
-       Search Console でプロパティを登録したら content の値を差し替える（docs/ANALYTICS.md）。 -->
-  <meta name="google-site-verification" content="GOOGLE_SITE_VERIFICATION_TOKEN">
+  <!-- Google Search Console の所有権確認（meta タグ方式）。
+       「Google アナリティクス」方式では確認できなかった（analytics.js が実行時に
+       gtag スクリプトを動的挿入する作りのため、JavaScript を実行しない確認botからは
+       見えない）ため、meta タグ方式に切り替えている。
+       確認が完了した後もこのタグは削除しないこと。Search Console は所有権を
+       定期的に再確認するため、消すと所有権が失効する（docs/ANALYTICS.md）。 -->
+  <meta name="google-site-verification" content="ZdvGQ7vZdOExPuMNHoci_t7PpwDCXVpCIxEToJmx7pA">
 
   <!-- アクセス解析（GA4）。測定IDと発火条件は analytics.js に集約している。
        外部送信の内容は privacy.html で公表している。 -->
