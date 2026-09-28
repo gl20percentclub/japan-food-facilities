@@ -23,22 +23,22 @@
   場合がある。可用性・サポートの保証はない。継続的な提供を希望する場合は有償サポートがあるので、
   本番環境・業務システムでの利用を検討する場合は事前に相談すること: https://docs.google.com/forms/d/e/1FAIpQLSf5X5glzmdmHfPz-KWc0pRfUmcZFtJrJmo1-Hyv5ZJXmZzrFA/viewform
 
-**最終更新: 2026-09-14**
+**最終更新: 2026-09-28**
 
 | 項目 | 値 |
 |---|---|
-| 施設レコード数 | 1,325,708 件 |
-| 座標を持つ施設 | 1,174,959 件 |
-| 収録市区町村 | 1,724 / 1,741 |
-| 結合CSV | 約 390.0 MB |
-| ベクトルタイル | 8,576 枚 / 約 38.1 MB |
+| 施設レコード数 | 1,359,867 件 |
+| 座標を持つ施設 | 1,201,498 件 |
+| 収録市区町村 | 1,731 / 1,741 |
+| 結合CSV | 約 398.7 MB |
+| ベクトルタイル | 8,712 枚 / 約 39.0 MB |
 
 ## ドキュメント
 
-- [llms-full.txt](https://gl20percentclub.github.io/japan-food-facilities/llms-full.txt): データ仕様・利用例・注意事項の全文（まずこれを読む）
+- [llms-full.txt](https://food.japan-facilities.com/llms-full.txt): データ仕様・利用例・注意事項の全文（まずこれを読む）
 - [README](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/README.md): プロジェクト概要
 - [データの詳細](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/DATA.md): 収集元・正規化・収録範囲・緯度経度の精度・鮮度・更新頻度
 - [収録状況](https://raw.githubusercontent.com/gl20percentclub/japan-food-facilities/main/docs/COVERAGE.md): 自治体ごとの収録有無・取得元・ライセンスの一覧
 - [タイルメタデータ](https://food.japan-facilities.com/api/tiles/metadata.json): TileJSON（レイヤ定義・ズーム範囲・bounds）
-- [地図ページ](https://gl20percentclub.github.io/japan-food-facilities/map.html): 収録データをベクトルタイルで表示するプレビュー地図
-- [出典・ライセンス表示](https://gl20percentclub.github.io/japan-food-facilities/attribution.html): 利用時に必要な出典表示の文例
+- [地図ページ](https://food.japan-facilities.com/map.html): 収録データをベクトルタイルで表示するプレビュー地図
+- [出典・ライセンス表示](https://food.japan-facilities.com/attribution.html): 利用時に必要な出典表示の文例
